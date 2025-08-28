@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "sys_platform == 'darwin'",
@@ -900,6 +900,7 @@ dependencies = [
     { name = "coremltools" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "jinja2" },
     { name = "numpy" },
     { name = "opencv-python" },
     { name = "pillow" },
@@ -909,6 +910,7 @@ dependencies = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "python-multipart" },
+    { name = "pyyaml" },
     { name = "structlog" },
     { name = "ultralytics" },
     { name = "uvicorn", extra = ["standard"] },
@@ -933,6 +935,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.104.0" },
     { name = "httpx", specifier = ">=0.25.0" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.12.0" },
+    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.6.0" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "opencv-python", specifier = ">=4.8.0" },
@@ -946,6 +949,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "python-multipart", specifier = ">=0.0.6" },
+    { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "structlog", specifier = ">=23.0.0" },
     { name = "ultralytics", specifier = ">=8.2.0" },

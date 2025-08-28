@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Monitor Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            padding: 8px 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-left: 5px solid #4facfe;
+            transition: transform 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .metric-title {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .metric-unit {
+            color: #999;
+            font-size: 0.9rem;
+        }
+        
+        .parking-spaces {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .parking-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .spaces-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .parking-space {
+            width: 100px;
+            height: 60px;
+            border: 3px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .parking-space.occupied {
+            background: #ff6b6b;
+            border-color: #ff5252;
+            color: white;
+        }
+        
+        .parking-space.free {
+            background: #51cf66;
+            border-color: #40c057;
+            color: white;
+        }
+        
+        .system-health {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .health-item {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .health-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .health-label {
+            color: #666;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+        }
+        
+        .last-update {
+            font-size: 0.8rem;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .live-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #51cf66;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>🚗 Parking Monitor Dashboard</h1>
+            <div class="status-indicator">
+                <span class="live-indicator"></span>
+                <span id="connectionStatus">Live Monitoring</span>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Vehicles Detected</div>
+                    <div class="metric-value" id="vehiclesDetected">0</div>
+                    <div class="metric-unit">vehicles</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-title">Occupancy Rate</div>
+                    <div class="metric-value" id="occupancyRate">0</div>
+                    <div class="metric-unit">%</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-title">Processing FPS</div>
+                    <div class="metric-value" id="processingFps">0</div>
+                    <div class="metric-unit">fps</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-title">Total Frames</div>
+                    <div class="metric-value" id="totalFrames">0</div>
+                    <div class="metric-unit">frames</div>
+                </div>
+            </div>
+            
+            <div class="parking-spaces">
+                <h3 class="parking-title">Parking Spaces Status</h3>
+                <div class="spaces-container" id="parkingSpaces">
+                    <!-- Parking spaces will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="system-health">
+                <div class="health-item">
+                    <div class="health-value" id="healthScore">0</div>
+                    <div class="health-label">Health Score</div>
+                </div>
+                
+                <div class="health-item">
+                    <div class="health-value" id="cpuUsage">0%</div>
+                    <div class="health-label">CPU Usage</div>
+                </div>
+                
+                <div class="health-item">
+                    <div class="health-value" id="memoryUsage">0%</div>
+                    <div class="health-label">Memory Usage</div>
+                </div>
+                
+                <div class="health-item">
+                    <div class="health-value" id="uptime">0s</div>
+                    <div class="health-label">Uptime</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="last-update">Last updated: <span id="lastUpdate">Never</span></div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket connection for real-time updates
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/dashboard/ws`;
+        let ws;
+        
+        function connectWebSocket() {
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                console.log('WebSocket connected');
+                document.getElementById('connectionStatus').textContent = 'Live Monitoring';
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                updateDashboard(data);
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket disconnected');
+                document.getElementById('connectionStatus').textContent = 'Disconnected';
+                // Reconnect after 3 seconds
+                setTimeout(connectWebSocket, 3000);
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+            };
+        }
+        
+        function updateDashboard(data) {
+            const stats = data.stats || {};
+            const health = data.health || {};
+            
+            // Update metrics
+            document.getElementById('vehiclesDetected').textContent = stats.vehicles_detected || 0;
+            document.getElementById('occupancyRate').textContent = stats.occupancy_rate || 0;
+            document.getElementById('processingFps').textContent = (stats.processing_fps || 0).toFixed(1);
+            document.getElementById('totalFrames').textContent = (stats.total_frames || 0).toLocaleString();
+            
+            // Update parking spaces
+            updateParkingSpaces(stats.total_spaces || 4, stats.occupied_spaces || 0);
+            
+            // Update health metrics
+            document.getElementById('healthScore').textContent = Math.round(health.score || 0);
+            document.getElementById('cpuUsage').textContent = Math.round(health.cpu_percent || 0) + '%';
+            document.getElementById('memoryUsage').textContent = Math.round(health.memory_percent || 0) + '%';
+            document.getElementById('uptime').textContent = formatUptime(stats.uptime || 0);
+            
+            // Update last update time
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        }
+        
+        function updateParkingSpaces(totalSpaces, occupiedSpaces) {
+            const container = document.getElementById('parkingSpaces');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < totalSpaces; i++) {
+                const space = document.createElement('div');
+                space.className = `parking-space ${i < occupiedSpaces ? 'occupied' : 'free'}`;
+                space.textContent = `Space ${i + 1}`;
+                container.appendChild(space);
+            }
+        }
+        
+        function formatUptime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${secs}s`;
+            } else {
+                return `${secs}s`;
+            }
+        }
+        
+        // Initialize WebSocket connection
+        connectWebSocket();
+        
+        // Initial load of data
+        fetch('/dashboard/api/data')
+            .then(response => response.json())
+            .then(data => {
+                updateDashboard({
+                    stats: data.stats,
+                    health: data.health
+                });
+            })
+            .catch(error => console.error('Initial data load error:', error));
+    </script>
+</body>
+</html>
