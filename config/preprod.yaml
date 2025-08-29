@@ -1,0 +1,170 @@
+# Pre-Production Environment Configuration
+# Field-ready testing environment with real camera input
+
+# Inherit from default and override specific settings
+extends: "default.yaml"
+
+# Service Configuration - Balanced logging
+service:
+  log_level: "INFO"
+
+# Detection Configuration - Production-ready settings
+detection:
+  confidence_threshold: 0.6  # Higher threshold for fewer false positives
+  target_fps: 25  # Balanced performance
+  device: "auto"  # Let system choose best device
+  batch_size: 2  # Slightly higher batch for efficiency
+  
+  optimization:
+    level: "high"  # Optimize for performance
+    model_caching: true
+    frame_caching: true
+    gpu_acceleration: true
+
+# Camera Configuration - Real camera input
+camera:
+  source: 0  # Physical camera
+  resolution: [1920, 1080]
+  fps: 25
+  buffer_size: 1
+  auto_exposure: true
+  auto_focus: true
+  
+  # Camera optimization for outdoor conditions
+  settings:
+    brightness: 0.5
+    contrast: 0.6
+    saturation: 0.5
+    exposure_compensation: 0
+
+# Parking Zones - Site-specific configuration
+parking_zones:
+  auto_detect: true  # Use automatic detection initially
+  total_spaces: 0  # Will be determined by auto-detection
+  
+  # Fallback manual zones if auto-detection fails
+  zones:
+    - id: "main_lot"
+      name: "Main Parking Area"
+      spaces: 10
+      coordinates: [[100, 150], [800, 150], [800, 500], [100, 500]]
+
+# Display Configuration - Field testing optimized
+display:
+  overlay_enabled: true
+  overlay_opacity: 0.8
+  show_vehicle_info: true
+  show_fps: false  # Disable FPS counter for cleaner display
+  show_debug_info: false
+  ad_integration: true
+
+# Health Monitoring - Production-like thresholds
+health_monitoring:
+  enabled: true
+  check_interval: 30
+  metrics_retention_hours: 48  # Longer retention for analysis
+  performance_monitoring: true
+  auto_recovery: true
+  
+  thresholds:
+    min_fps: 20  # Acceptable minimum for field conditions
+    max_memory_gb: 3  # Conservative memory usage
+    max_cpu_percent: 75  # Leave headroom for system
+    min_accuracy: 0.85  # High accuracy requirement
+    max_detection_latency_ms: 120  # Reasonable latency
+
+# Logging Configuration - Structured for analysis
+logging:
+  level: "INFO"
+  format: "structured"
+  max_file_size: "50MB"  # Smaller files for easier handling
+  max_files: 10  # More files for better retention
+  console_output: false
+  file_output: true
+  
+  files:
+    main: "logs/preprod_parking_monitor.log"
+    detection: "logs/preprod_detection.log"
+    performance: "logs/preprod_performance.log"
+    error: "logs/preprod_error.log"
+
+# API Configuration - Enhanced monitoring
+api:
+  enabled: true
+  cors_enabled: true
+  cors_origins:
+    - "http://localhost:*"
+    - "http://127.0.0.1:*"
+    - "http://100.64.0.0/10"  # Tailscale network range
+  
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 120  # Higher limit for testing
+    burst_size: 20
+
+# Performance Configuration - Optimized for field deployment
+performance:
+  memory_limit_gb: 3
+  cpu_limit_percent: 75
+  optimization_profile: "production"
+  
+  thermal_management:
+    enabled: true
+    temperature_threshold: 75  # More conservative for continuous operation
+    throttle_on_overheat: true
+
+# Integration Configuration - Full integration testing
+integration:
+  dashboard:
+    enabled: true
+    health_proxy: true
+    metrics_export: true
+  
+  services:
+    device_api:
+      enabled: true
+      url: "http://localhost:9090"
+      retry_attempts: 3
+      timeout_seconds: 10
+    
+    player:
+      enabled: true
+      overlay_integration: true
+
+# Site Configuration - Field test site
+site:
+  name: "Pre-Production Test Site"
+  location: "Field Testing Location"
+  environment: "preprod"
+  
+  # Field testing parameters
+  testing:
+    validation_period_days: 7
+    metrics_collection: true
+    performance_benchmarking: true
+    accuracy_validation: true
+
+# Monitoring and Alerting
+monitoring:
+  enabled: true
+  alert_thresholds:
+    consecutive_failures: 3
+    accuracy_drop_percent: 10
+    latency_spike_ms: 200
+  
+  notifications:
+    webhook_url: null  # Set via environment variables
+    notification_level: "warning"
+
+# Quality Assurance
+quality_assurance:
+  validation_mode: true
+  benchmark_against_baseline: true
+  collect_performance_metrics: true
+  log_detection_samples: true
+  
+  # Sample collection for validation
+  sample_collection:
+    enabled: true
+    frequency_minutes: 30
+    max_samples_per_hour: 5

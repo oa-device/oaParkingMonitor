@@ -1,0 +1,148 @@
+# Staging Environment Configuration
+# Development environment with video loopback and debug features
+
+# Inherit from default and override specific settings
+extends: "default.yaml"
+
+# Service Configuration - Debug enabled
+service:
+  log_level: "DEBUG"
+
+# Detection Configuration - Optimized for development
+detection:
+  confidence_threshold: 0.4  # Lower threshold for better detection visibility
+  target_fps: 10  # Reduced for development machines
+  device: "cpu"  # Force CPU for consistent behavior
+  
+  optimization:
+    level: "low"  # Prioritize accuracy over performance
+    model_caching: false  # Allow model reloading during development
+
+# Camera Configuration - Video file rotation system
+camera:
+  source: "videos/current.mp4"  # Video file instead of camera
+  fps: 25  # Match video frame rate
+  buffer_size: 2  # Larger buffer for video files
+  
+  # Video rotation settings
+  rotation:
+    enabled: true
+    videos:
+      - "current.mp4"
+      - "parking_lot_busy.mp4"
+      - "parking_lot_empty.mp4"
+      - "parking_lot_mixed.mp4"
+    interval_seconds: 300  # 5 minutes per video
+
+# Parking Zones - Known test configuration
+parking_zones:
+  auto_detect: false
+  total_spaces: 20
+  
+  zones:
+    - id: "zone_a"
+      name: "Zone A - Main Lot"
+      spaces: 12
+      coordinates: [[50, 100], [400, 100], [400, 300], [50, 300]]
+    - id: "zone_b"
+      name: "Zone B - Side Lot"
+      spaces: 8
+      coordinates: [[450, 100], [700, 100], [700, 300], [450, 300]]
+
+# Display Configuration - Full debug info
+display:
+  show_fps: true
+  show_debug_info: true
+  ad_integration: false  # Disable ads in development
+  
+  # Debug overlays
+  debug:
+    show_detection_boxes: true
+    show_confidence_scores: true
+    show_zone_boundaries: true
+    color_code_occupancy: true
+
+# Health Monitoring - Relaxed thresholds
+health_monitoring:
+  check_interval: 10  # More frequent checks in development
+  thresholds:
+    min_fps: 8  # Lower requirement for video files
+    max_memory_gb: 6  # Allow more memory usage
+    max_cpu_percent: 95  # Relaxed CPU usage
+    min_accuracy: 0.7  # Lower accuracy requirement
+    max_detection_latency_ms: 200  # Allow higher latency
+
+# Logging Configuration - Verbose for development
+logging:
+  level: "DEBUG"
+  console_output: true  # Show logs in console
+  
+  # Additional debug files
+  files:
+    main: "logs/staging_parking_monitor.log"
+    detection: "logs/staging_detection.log"
+    performance: "logs/staging_performance.log"
+    error: "logs/staging_error.log"
+    debug: "logs/staging_debug.log"
+
+# Performance - Development optimized
+performance:
+  memory_limit_gb: 6
+  cpu_limit_percent: 95
+  optimization_profile: "development"
+  
+  thermal_management:
+    enabled: false  # Disable in development
+
+# Development Features
+development:
+  save_detection_frames: true
+  performance_profiling: true
+  memory_profiling: true
+  debug_api_enabled: true
+  
+  # Debug directories
+  debug_output_dir: "debug"
+  frame_save_dir: "debug/frames"
+  profile_output_dir: "debug/profiles"
+  
+  # Test data generation
+  generate_test_data: true
+  test_data_interval: 60  # Generate test detection data every minute
+
+# Integration - Development services
+integration:
+  dashboard:
+    enabled: true
+    health_proxy: true
+    metrics_export: true
+    debug_endpoints: true
+  
+  services:
+    device_api:
+      enabled: true
+      url: "http://localhost:9090"
+      timeout_seconds: 30
+    
+    player:
+      enabled: true
+      overlay_integration: true
+      debug_mode: true
+
+# Site Configuration
+site:
+  name: "Staging Environment"
+  location: "Development Lab"
+  environment: "staging"
+  
+  # Video source details
+  video_sources:
+    - name: "Test Parking Lot 1"
+      file: "current.mp4"
+      description: "Standard parking lot with moderate traffic"
+    - name: "Busy Parking Lot"
+      file: "parking_lot_busy.mp4"
+      description: "High occupancy scenario for stress testing"
+    - name: "Empty Parking Lot"
+      file: "parking_lot_empty.mp4"
+      description: "Low occupancy baseline testing"
