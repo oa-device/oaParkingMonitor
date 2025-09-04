@@ -7,7 +7,6 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
-import json
 import asyncio
 import logging
 from typing import List, Dict, Any
@@ -68,7 +67,7 @@ def create_dashboard_app(parking_service) -> FastAPI:
             try:
                 # Get latest data from parking service
                 stats = await parking_service.get_detection_stats()
-                health = {"running": parking_service.running, "uptime": parking_service.get_uptime()}
+                health = await parking_service.get_health_status()
                 
                 # Prepare dashboard data
                 dashboard_data = {
@@ -108,7 +107,7 @@ def create_dashboard_app(parking_service) -> FastAPI:
         # Get initial data
         try:
             stats = await parking_service.get_detection_stats()
-            health = {"running": parking_service.running, "uptime": parking_service.get_uptime()}
+            health = await parking_service.get_health_status()
         except:
             stats = {}
             health = {}

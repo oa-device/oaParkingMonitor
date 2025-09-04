@@ -6,7 +6,6 @@ Focuses purely on AI vision and parking detection
 
 import asyncio
 import logging
-import time
 from datetime import datetime
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -18,15 +17,24 @@ from fastapi.responses import JSONResponse, HTMLResponse
 
 from .detector import ParkingDetector
 from .dashboard.dashboard import create_dashboard_app
+from .integrations import YHUIntegration
+from .config import ConfigManager
 
 
 class ParkingMonitorService:
     """Main service for parking detection - AI vision only"""
     
     def __init__(self):
+        # Load configuration
+        self.config_manager = ConfigManager()
+        self.config = self.config_manager.config
+        
         self.detector = ParkingDetector()
         self.running = False
         self.start_time = datetime.now()
+        
+        # Initialize YHU integration
+        self.yhu_integration = None
         
         # Setup logging
         logging.basicConfig(
@@ -40,13 +48,32 @@ class ParkingMonitorService:
         self.running = True
         self.logger.info("Starting parking detection...")
         
+        # Initialize YHU integration if enabled
+        if self.config.yhu_integration.enabled:
+            self.yhu_integration = YHUIntegration(self.config.yhu_integration)
+            await self.yhu_integration.__aenter__()
+            await self.yhu_integration.start()
+            self.logger.info("YHU integration initialized")
+        
         # Start detector in background task
         asyncio.create_task(self.detector.process_video_stream())
+        
+        # Start YHU sync loop if enabled
+        if self.yhu_integration:
+            asyncio.create_task(self._yhu_sync_loop())
         
     async def stop_detection(self):
         """Stop parking detection processing"""
         self.running = False
         await self.detector.stop()
+        
+        # Stop YHU integration
+        if self.yhu_integration:
+            await self.yhu_integration.stop()
+            await self.yhu_integration.__aexit__(None, None, None)
+            self.yhu_integration = None
+            self.logger.info("YHU integration stopped")
+        
         self.logger.info("Parking detection stopped")
 
     async def get_detection_stats(self):
@@ -56,6 +83,41 @@ class ParkingMonitorService:
     def get_uptime(self):
         """Get service uptime in seconds"""
         return (datetime.now() - self.start_time).total_seconds()
+    
+    async def _yhu_sync_loop(self):
+        """Background task for YHU synchronization"""
+        while self.running and self.yhu_integration:
+            try:
+                # Get current detection stats
+                stats = await self.get_detection_stats()
+                
+                # Send to YHU integration
+                await self.yhu_integration.process_detection_update(stats)
+                
+                # Wait for next sync interval
+                await asyncio.sleep(self.config.yhu_integration.sync_interval)
+                
+            except Exception as e:
+                self.logger.error(f"Error in YHU sync loop: {e}")
+                await asyncio.sleep(5)  # Wait before retrying
+    
+    async def get_yhu_status(self):
+        """Get YHU integration status"""
+        if not self.yhu_integration:
+            return {"enabled": False, "status": "disabled"}
+        return await self.yhu_integration.get_integration_status()
+
+    async def get_health_status(self):
+        """Get basic health status for dashboard compatibility"""
+        return {
+            "running": self.running,
+            "uptime": self.get_uptime(),
+            "health_score": 100 if self.running else 0,
+            "system": {
+                "cpu_percent": 0,  # Minimal implementation for dashboard
+                "memory_percent": 0
+            }
+        }
 
 
 # Global service instance
@@ -126,6 +188,40 @@ async def get_detection():
 async def get_parking_spaces():
     """Get parking space definitions and status"""
     return await parking_service.detector.get_parking_spaces()
+
+# YHU Integration endpoints
+@app.get("/api/yhu/status")
+async def get_yhu_status():
+    """Get YHU integration status"""
+    return await parking_service.get_yhu_status()
+
+@app.get("/api/yhu/config")
+async def get_yhu_config():
+    """Get YHU integration configuration"""
+    return JSONResponse({
+        "enabled": parking_service.config.yhu_integration.enabled,
+        "api_url": parking_service.config.yhu_integration.api_url,
+        "lot_id": parking_service.config.yhu_integration.lot_id,
+        "sync_interval": parking_service.config.yhu_integration.sync_interval
+    })
+
+@app.post("/api/yhu/test")
+async def test_yhu_connection():
+    """Test YHU Dashboard connection"""
+    if not parking_service.yhu_integration:
+        return JSONResponse(
+            {"success": False, "error": "YHU integration not enabled"}, 
+            status_code=400
+        )
+    
+    try:
+        success = await parking_service.yhu_integration._test_connection()
+        return JSONResponse({"success": success})
+    except Exception as e:
+        return JSONResponse(
+            {"success": False, "error": str(e)}, 
+            status_code=500
+        )
 
 # Mount dashboard (standalone monitoring UI)
 dashboard_app = create_dashboard_app(parking_service)
