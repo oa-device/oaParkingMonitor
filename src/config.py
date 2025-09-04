@@ -5,7 +5,7 @@ Simple configuration management for parking monitor
 import yaml
 from pathlib import Path
 from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 
 
 @dataclass
@@ -54,6 +54,19 @@ class VideoConfig:
 
 
 @dataclass
+class YHUConfig:
+    """Configuration for YHU Dashboard integration"""
+    enabled: bool = False
+    api_url: str = "http://localhost:3000"
+    api_key: str = ""
+    lot_id: str = ""
+    sync_interval: int = 5  # seconds
+    timeout: int = 10  # HTTP timeout
+    retry_attempts: int = 3
+    retry_delay: int = 5  # seconds between retries
+
+
+@dataclass
 class ParkingConfig:
     """Main configuration for parking monitor"""
     detection: DetectionConfig
@@ -61,6 +74,7 @@ class ParkingConfig:
     spaces: List[ParkingSpaceConfig]
     api_port: int = 9091
     debug: bool = False
+    yhu_integration: YHUConfig = field(default_factory=YHUConfig)
     
     def __post_init__(self):
         # Ensure we have detection and video configs
@@ -69,6 +83,10 @@ class ParkingConfig:
         
         if not isinstance(self.video, VideoConfig):
             self.video = VideoConfig(**self.video) if isinstance(self.video, dict) else VideoConfig()
+        
+        # Ensure we have YHU integration config
+        if not isinstance(self.yhu_integration, YHUConfig):
+            self.yhu_integration = YHUConfig(**self.yhu_integration) if isinstance(self.yhu_integration, dict) else YHUConfig()
         
         # Convert space dictionaries to ParkingSpaceConfig objects
         processed_spaces = []
@@ -111,7 +129,8 @@ class ParkingConfig:
         return cls(
             detection=DetectionConfig(),
             video=VideoConfig(),
-            spaces=default_spaces
+            spaces=default_spaces,
+            yhu_integration=YHUConfig()
         )
     
     def save_to_file(self, config_path: Path) -> None:
@@ -124,7 +143,8 @@ class ParkingConfig:
             "video": asdict(self.video),
             "spaces": [space.to_dict() for space in self.spaces],
             "api_port": self.api_port,
-            "debug": self.debug
+            "debug": self.debug,
+            "yhu_integration": asdict(self.yhu_integration)
         }
         
         with open(config_path, 'w') as f:
