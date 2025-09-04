@@ -58,10 +58,16 @@ curl http://localhost:9091/health
 
 ## API Endpoints
 
+### Core Endpoints
 - `GET /health` - Service health check
-- `GET /api/parking/status` - Current parking occupancy
-- `GET /api/parking/metrics` - Performance metrics  
-- `GET /api/parking/stream` - Real-time detection stream (WebSocket)
+- `GET /api/stats` - Current detection statistics
+- `GET /api/detection` - Current parking detection results
+- `GET /api/spaces` - Parking space definitions and status
+
+### YHU Integration Endpoints
+- `GET /api/yhu/status` - YHU integration status
+- `GET /api/yhu/config` - YHU integration configuration
+- `POST /api/yhu/test` - Test YHU Dashboard connection
 
 ## Integration
 
@@ -71,6 +77,22 @@ The service integrates with oaDashboard for:
 - Performance metrics collection
 - Health status reporting
 - Remote service management
+
+### YHU Dashboard Integration
+Optional integration with YHU Dashboard provides:
+- Unified parking management interface
+- Real-time occupancy analytics and trends
+- Multi-monitor fleet management
+- Advanced reporting and visualization
+
+Configure YHU integration in your config file:
+```yaml
+yhu_integration:
+  enabled: true
+  api_url: "http://localhost:3000"
+  api_key: "your-api-key"
+  lot_id: "your-lot-id"
+```
 
 ### Deployment via oaAnsible
 Automated deployment using the `macos/parking_monitor` Ansible role:
