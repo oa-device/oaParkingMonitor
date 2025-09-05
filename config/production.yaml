@@ -12,7 +12,7 @@ service:
 detection:
   confidence_threshold: 0.7  # High threshold to minimize false positives
   nms_threshold: 0.45  # Optimal NMS for vehicle detection
-  target_fps: 30  # Full frame rate for real-time monitoring
+  target_fps: 30.000030  # Precise framerate for macOS USB cameras
   device: "auto"  # Automatic device selection (prefer GPU)
   batch_size: 4  # Higher batch size for efficiency
   
@@ -26,7 +26,7 @@ detection:
 camera:
   source: 0  # Primary camera
   resolution: [1920, 1080]  # Full HD for accurate detection
-  fps: 30
+  fps: 30.000030  # Precise framerate for macOS USB cameras
   buffer_size: 1  # Minimal latency
   auto_exposure: true
   auto_focus: true

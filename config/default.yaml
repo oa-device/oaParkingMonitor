@@ -13,7 +13,7 @@ detection:
   model_path: "models/yolo11m.pt"
   confidence_threshold: 0.5
   nms_threshold: 0.4
-  target_fps: 30
+  target_fps: 30.000030  # Precise framerate for macOS USB cameras
   device: "auto"
   batch_size: 1
   
@@ -28,7 +28,7 @@ detection:
 camera:
   source: 0  # Default camera
   resolution: [1920, 1080]
-  fps: 30
+  fps: 30.000030  # Precise framerate for macOS USB cameras
   buffer_size: 1
   auto_exposure: true
   auto_focus: true
