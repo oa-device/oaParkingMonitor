@@ -179,6 +179,11 @@ class MVPParkingDetector:
                 self.logger.warning("Failed to read frame from video source")
                 return None
             
+            # Apply camera mirroring if enabled and using a camera device
+            if self.config.camera_mirror and video_source_str.isdigit():
+                frame = cv2.flip(frame, 1)  # Horizontal flip
+                self.logger.debug("Applied camera mirror (horizontal flip)")
+            
             return frame
             
         except Exception as e:
