@@ -474,6 +474,19 @@ class MVPParkingDetector:
             self.logger.error(f"Image encoding failed: {e}")
             return None
     
+    def get_raw_frame_image(self) -> Optional[bytes]:
+        """Get current raw frame (without overlays) as JPEG bytes"""
+        if self.current_frame is None:
+            return None
+        
+        try:
+            # Encode as JPEG
+            _, buffer = cv2.imencode('.jpg', self.current_frame)
+            return buffer.tobytes()
+        except Exception as e:
+            self.logger.error(f"Raw frame encoding failed: {e}")
+            return None
+    
     async def get_stats(self) -> Dict[str, Any]:
         """Get current detection statistics"""
         # Add config data to stats

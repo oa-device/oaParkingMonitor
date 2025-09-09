@@ -111,6 +111,10 @@ class MVPParkingMonitorService:
         """Get last processed snapshot as JPEG bytes"""
         return self.detector.get_last_snapshot_image()
     
+    def get_raw_frame_image(self) -> Optional[bytes]:
+        """Get current raw frame (without overlays) as JPEG bytes"""
+        return self.detector.get_raw_frame_image()
+    
     async def get_zones_data(self):
         """Get parking zones data"""
         return self.config.get_zones_data()
@@ -201,6 +205,28 @@ async def get_snapshot():
         media_type="image/jpeg",
         headers={
             "Content-Disposition": "inline; filename=parking_snapshot.jpg",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
+
+
+@app.get("/api/raw-snapshot")
+async def get_raw_snapshot():
+    """Get current raw frame without detection overlays - perfect for coordinate mapping"""
+    image_bytes = parking_service.get_raw_frame_image()
+    if image_bytes is None:
+        return JSONResponse(
+            {"error": "No raw frame available yet"}, 
+            status_code=404
+        )
+    
+    return Response(
+        content=image_bytes, 
+        media_type="image/jpeg",
+        headers={
+            "Content-Disposition": "inline; filename=parking_raw_snapshot.jpg",
             "Cache-Control": "no-cache, no-store, must-revalidate",
             "Pragma": "no-cache",
             "Expires": "0"
