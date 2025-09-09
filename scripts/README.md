@@ -1,34 +1,31 @@
-# oaParkingMonitor Scripts
+# oaParkingMonitor MVP Scripts
 
-Professional script collection for parking monitor operations with shared utilities and consistent interface.
+Simplified scripts for MVP deployment and management.
 
-## Script Overview
+## Available Scripts
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | **`helpers.sh`** | Shared utilities library | `source scripts/helpers.sh` |
-| **`setup.sh`** | Initial project setup | `./scripts/setup.sh [--skip-models]` |
-| **`validate.sh`** | Deployment validation | `./scripts/validate.sh` |
-| **`start.sh`** | Service startup | `./scripts/start.sh [-c config] [-p port]` |
-| **`health_check.sh`** | Health monitoring | `./scripts/health_check.sh [--detailed]` |
+| **`setup.sh`** | Initial project setup | `./scripts/setup.sh` |
+| **`validate.sh`** | MVP validation | `./scripts/validate.sh` |
+| **`start.sh`** | Service startup | `./scripts/start.sh` |
+| **`health_check.sh`** | Health monitoring | `./scripts/health_check.sh` |
 
-## Quick Commands
+## MVP Quick Start
 
 ```bash
 # Initial setup
 ./scripts/setup.sh
 
-# Validate deployment readiness
+# Validate MVP environment
 ./scripts/validate.sh
 
-# Start service
+# Start MVP service
 ./scripts/start.sh
 
 # Check health
-./scripts/health_check.sh --detailed
-
-# Debug mode
-DEBUG=1 ./scripts/start.sh
+./scripts/health_check.sh
 ```
 
 ## Shared Utilities (`helpers.sh`)
@@ -206,4 +203,12 @@ Scripts support LaunchAgent integration on macOS:
 launchctl load com.orangead.parking-monitor.plist  # System service
 ```
 
-This professional script collection ensures consistent, reliable operation of oaParkingMonitor across all environments with comprehensive monitoring and validation capabilities.
+## MVP Simplifications
+
+The MVP removes complex features:
+- Permission management scripts (removed)
+- Security audit scripts (removed)
+- Complex alias configurations (removed)
+- Multi-environment management (simplified to single mvp.yaml)
+
+For full production deployment, use the oaAnsible deployment system.

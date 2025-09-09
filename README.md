@@ -99,10 +99,10 @@ Automated deployment using the `macos/parking_monitor` Ansible role:
 
 ```bash
 # Deploy to staging
-ansible-playbook -i inventory/yuh/staging.yml playbooks/universal.yml -t parking-monitor
+ansible-playbook -i inventory/yhu/staging.yml playbooks/universal.yml -t parking-monitor
 
 # Deploy to production
-ansible-playbook -i inventory/yuh/prod.yml playbooks/universal.yml -t parking-monitor
+ansible-playbook -i inventory/yhu/prod.yml playbooks/universal.yml -t parking-monitor
 ```
 
 ## Architecture

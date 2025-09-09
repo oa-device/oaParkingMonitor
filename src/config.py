@@ -1,398 +1,335 @@
 """
-Simple configuration management for parking monitor
+Simplified MVP configuration for oaParkingMonitor
+Single configuration class with 6 default parking zones and snapshot processing
 """
 
-import yaml
+import time
 from pathlib import Path
-from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, asdict, field
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass, field
 
 
 @dataclass
+class ParkingZone:
+    """Definition of a parking zone with detection coordinates"""
+    id: int
+    name: str
+    coordinates: List[List[int]]  # [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+    space_id: int
+    description: str
+    detection_difficulty: str = "normal"  # "easy", "normal", "hard"
+    occupied: bool = False
+    confidence: float = 0.0
+    last_detection: Optional[float] = None  # epoch timestamp
+    
+    def __post_init__(self):
+        """Validate and fix coordinates"""
+        # Fix negative coordinates (set to 0)
+        self.coordinates = [[max(0, x), max(0, y)] for x, y in self.coordinates]
+
+
+@dataclass
+class MVPConfig:
+    """Simplified MVP configuration for snapshot-based parking detection"""
+    
+    # Core processing settings
+    snapshot_interval: int = 5  # seconds between snapshots
+    confidence_threshold: float = 0.5
+    model_path: str = "models/yolo11m.pt"
+    
+    # API settings
+    api_port: int = 9091
+    api_host: str = "0.0.0.0"
+    
+    # Video source settings
+    video_source: str = ""  # Will be set to default path
+    
+    # Processing state
+    last_snapshot_epoch: float = 0.0
+    processing_enabled: bool = True
+    
+    # Updated 11 parking zones with real coordinates (1920x1080)
+    parking_zones: List[ParkingZone] = field(default_factory=lambda: [
+        # Main row zones (easy to detect, except A1)
+        ParkingZone(
+            id=1, space_id=1, name="A1", description="Front left space (partially visible)",
+            coordinates=[[308, 306], [151, 296], [151, 561]], detection_difficulty="hard"
+        ),
+        ParkingZone(
+            id=2, space_id=2, name="A2", description="Front row center-left",
+            coordinates=[[511, 320], [320, 308], [153, 576], [384, 611]], detection_difficulty="easy"
+        ),
+        ParkingZone(
+            id=3, space_id=3, name="A3", description="Front row center",
+            coordinates=[[711, 328], [520, 320], [392, 612], [625, 633]], detection_difficulty="easy"
+        ),
+        ParkingZone(
+            id=4, space_id=4, name="A4", description="Front row center-right",
+            coordinates=[[914, 335], [719, 328], [630, 633], [867, 652]], detection_difficulty="easy"
+        ),
+        ParkingZone(
+            id=5, space_id=5, name="A5", description="Front row right-center",
+            coordinates=[[1132, 344], [922, 337], [874, 654], [1117, 669]], detection_difficulty="easy"
+        ),
+        ParkingZone(
+            id=6, space_id=6, name="A6", description="Front row right",
+            coordinates=[[1354, 354], [1135, 339], [1129, 667], [1383, 674]], detection_difficulty="easy"
+        ),
+        ParkingZone(
+            id=7, space_id=7, name="A7", description="Front row far right",
+            coordinates=[[1588, 365], [1361, 349], [1388, 678], [1677, 690]], detection_difficulty="easy"
+        ),
+        # Back row zones (hard to detect)
+        ParkingZone(
+            id=8, space_id=8, name="B1", description="Back row left",
+            coordinates=[[998, 0], [982, 48], [1142, 65], [1166, 0]], detection_difficulty="hard"
+        ),
+        ParkingZone(
+            id=9, space_id=9, name="B2", description="Back row center-left", 
+            coordinates=[[1170, 0], [1151, 64], [1325, 81], [1338, 0]], detection_difficulty="hard"
+        ),
+        ParkingZone(
+            id=10, space_id=10, name="B3", description="Back row center-right",
+            coordinates=[[1349, 0], [1330, 84], [1516, 100], [1514, 0]], detection_difficulty="hard"
+        ),
+        ParkingZone(
+            id=11, space_id=11, name="B4", description="Back row right",
+            coordinates=[[1523, 3], [1519, 101], [1712, 100], [1689, 5]], detection_difficulty="hard"
+        )
+    ])
+    
+    # Logging settings
+    log_level: str = "INFO"
+    debug: bool = False
+    
+    def __post_init__(self):
+        """Initialize default values and paths"""
+        if not self.video_source:
+            # Default to staging video path for MVP
+            home = Path.home()
+            self.video_source = str(home / "orangead" / "staging-video-feed" / "videos" / "current.mp4")
+        
+        # Initialize last snapshot time to current time
+        if self.last_snapshot_epoch == 0.0:
+            self.last_snapshot_epoch = time.time()
+    
+    def get_zone_by_id(self, zone_id: int) -> Optional[ParkingZone]:
+        """Get parking zone by ID"""
+        for zone in self.parking_zones:
+            if zone.id == zone_id:
+                return zone
+        return None
+    
+    def update_zone_status(self, zone_id: int, occupied: bool, confidence: float = 0.0):
+        """Update zone occupancy status"""
+        zone = self.get_zone_by_id(zone_id)
+        if zone:
+            zone.occupied = occupied
+            zone.confidence = confidence
+            zone.last_detection = time.time()
+    
+    def get_occupancy_summary(self) -> Dict[str, Any]:
+        """Get overall occupancy summary"""
+        total_zones = len(self.parking_zones)
+        occupied_zones = sum(1 for zone in self.parking_zones if zone.occupied)
+        occupancy_rate = occupied_zones / total_zones if total_zones > 0 else 0.0
+        
+        return {
+            "total_zones": total_zones,
+            "occupied_zones": occupied_zones,
+            "available_zones": total_zones - occupied_zones,
+            "occupancy_rate": round(occupancy_rate, 2),
+            "last_update": self.last_snapshot_epoch
+        }
+    
+    def get_zones_data(self) -> List[Dict[str, Any]]:
+        """Get all zones data for API response"""
+        return [
+            {
+                "id": zone.id,
+                "name": zone.name,
+                "coordinates": zone.coordinates,
+                "occupied": zone.occupied,
+                "confidence": zone.confidence,
+                "last_detection": zone.last_detection
+            }
+            for zone in self.parking_zones
+        ]
+    
+    def should_process_snapshot(self) -> bool:
+        """Check if enough time has passed for next snapshot"""
+        return time.time() - self.last_snapshot_epoch >= self.snapshot_interval
+    
+    def mark_snapshot_processed(self):
+        """Mark current time as last snapshot processing time"""
+        self.last_snapshot_epoch = time.time()
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert config to dictionary for API responses"""
+        return {
+            "snapshot_interval": self.snapshot_interval,
+            "confidence_threshold": self.confidence_threshold,
+            "model_path": self.model_path,
+            "api_port": self.api_port,
+            "api_host": self.api_host,
+            "video_source": self.video_source,
+            "last_snapshot_epoch": self.last_snapshot_epoch,
+            "processing_enabled": self.processing_enabled,
+            "total_zones": len(self.parking_zones),
+            "log_level": self.log_level,
+            "debug": self.debug
+        }
+
+
+class MVPConfigManager:
+    """Simplified config manager for MVP"""
+    
+    def __init__(self, config_file: Optional[str] = None):
+        self.config_file = config_file
+        self._config: Optional[MVPConfig] = None
+    
+    @property 
+    def config(self) -> MVPConfig:
+        """Get current configuration, creating default if needed"""
+        if self._config is None:
+            self._config = MVPConfig()
+        return self._config
+    
+    def load_config(self, config_file: Optional[str] = None) -> MVPConfig:
+        """Load configuration from file (if provided) or use defaults"""
+        if config_file:
+            try:
+                import yaml
+                config_path = Path(config_file)
+                if config_path.exists():
+                    with open(config_path, 'r') as f:
+                        config_data = yaml.safe_load(f)
+                    
+                    # Extract parking zones separately for proper initialization
+                    parking_zones_data = config_data.pop('parking_zones', [])
+                    
+                    # Create base config without zones
+                    self._config = MVPConfig(**config_data)
+                    
+                    # Update zones if provided
+                    if parking_zones_data:
+                        self.update_zones(parking_zones_data)
+                    
+                else:
+                    print(f"Config file {config_file} not found, using defaults")
+                    self._config = MVPConfig()
+            except Exception as e:
+                print(f"Error loading config: {e}, using defaults")
+                self._config = MVPConfig()
+        else:
+            self._config = MVPConfig()
+        
+        return self._config
+    
+    def save_config(self, config_file: Optional[str] = None) -> bool:
+        """Save current configuration to file"""
+        if not config_file:
+            config_file = self.config_file
+        
+        if not config_file:
+            return False
+        
+        try:
+            import yaml
+            config_path = Path(config_file)
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Convert config to dictionary for YAML
+            config_dict = {
+                "snapshot_interval": self.config.snapshot_interval,
+                "confidence_threshold": self.config.confidence_threshold,
+                "model_path": self.config.model_path,
+                "api_port": self.config.api_port,
+                "api_host": self.config.api_host,
+                "video_source": self.config.video_source,
+                "processing_enabled": self.config.processing_enabled,
+                "log_level": self.config.log_level,
+                "debug": self.config.debug,
+                "parking_zones": [
+                    {
+                        "id": zone.id,
+                        "space_id": zone.space_id,
+                        "name": zone.name,
+                        "description": zone.description,
+                        "coordinates": zone.coordinates,
+                        "detection_difficulty": zone.detection_difficulty
+                    }
+                    for zone in self.config.parking_zones
+                ]
+            }
+            
+            with open(config_path, 'w') as f:
+                yaml.dump(config_dict, f, default_flow_style=False, indent=2)
+            
+            return True
+        except Exception as e:
+            print(f"Error saving config: {e}")
+            return False
+    
+    def reset_to_defaults(self):
+        """Reset configuration to defaults"""
+        self._config = MVPConfig()
+    
+    def update_zones(self, zones_data: List[Dict[str, Any]]) -> bool:
+        """Update parking zones from dictionary data"""
+        try:
+            new_zones = []
+            for zone_data in zones_data:
+                zone = ParkingZone(
+                    id=zone_data['id'],
+                    space_id=zone_data.get('space_id', zone_data['id']),
+                    name=zone_data['name'],
+                    description=zone_data.get('description', f"Parking space {zone_data['name']}"),
+                    coordinates=zone_data['coordinates'],
+                    detection_difficulty=zone_data.get('detection_difficulty', 'normal')
+                )
+                new_zones.append(zone)
+            
+            self.config.parking_zones = new_zones
+            return True
+        except Exception as e:
+            print(f"Error updating zones: {e}")
+            return False
+    
+    def get_environment(self) -> str:
+        """Get environment for compatibility"""
+        return "mvp"
+
+
+# Legacy compatibility - redirect old classes to new MVP classes
+ConfigManager = MVPConfigManager
+ParkingConfig = MVPConfig
+
+# For backward compatibility with existing detector code
+@dataclass
 class ParkingSpaceConfig:
-    """Configuration for a single parking space"""
+    """Legacy parking space config for backward compatibility"""
     space_id: int
     x: int
-    y: int
+    y: int  
     width: int
     height: int
     label: str = ""
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
 
 @dataclass
 class DetectionConfig:
-    """Detection configuration settings"""
+    """Legacy detection config for backward compatibility"""
     confidence_threshold: float = 0.5
     model_path: str = "models/yolo11m.pt"
-    vehicle_classes: List[str] = None
     processing_fps: int = 10
-    
-    def __post_init__(self):
-        if self.vehicle_classes is None:
-            self.vehicle_classes = ["car", "truck", "bus", "motorcycle"]
-
+    vehicle_classes: List[str] = field(default_factory=lambda: ["car", "truck", "bus", "motorcycle"])
 
 @dataclass
 class VideoConfig:
-    """Video source configuration"""
+    """Legacy video config for backward compatibility"""
     source_path: str = ""
-    rotation_enabled: bool = True
-    rotation_videos: List[str] = None
-    rotation_interval: int = 300  # seconds
     
     def __post_init__(self):
         if not self.source_path:
-            # Default staging video path
             home = Path.home()
             self.source_path = str(home / "orangead" / "staging-video-feed" / "videos" / "current.mp4")
-        
-        if self.rotation_videos is None:
-            self.rotation_videos = ["current.mp4"]
-
-
-@dataclass
-class YHUConfig:
-    """Configuration for YHU Dashboard integration"""
-    enabled: bool = False
-    api_url: str = "http://localhost:3000"
-    api_key: str = ""
-    lot_id: str = ""
-    sync_interval: int = 5  # seconds
-    timeout: int = 10  # HTTP timeout
-    retry_attempts: int = 3
-    retry_delay: int = 5  # seconds between retries
-
-
-@dataclass
-class ParkingConfig:
-    """Main configuration for parking monitor"""
-    detection: DetectionConfig
-    video: VideoConfig
-    spaces: List[ParkingSpaceConfig]
-    api_port: int = 9091
-    debug: bool = False
-    yhu_integration: YHUConfig = field(default_factory=YHUConfig)
-    
-    def __post_init__(self):
-        # Ensure we have detection and video configs
-        if not isinstance(self.detection, DetectionConfig):
-            self.detection = DetectionConfig(**self.detection) if isinstance(self.detection, dict) else DetectionConfig()
-        
-        if not isinstance(self.video, VideoConfig):
-            self.video = VideoConfig(**self.video) if isinstance(self.video, dict) else VideoConfig()
-        
-        # Ensure we have YHU integration config
-        if not isinstance(self.yhu_integration, YHUConfig):
-            self.yhu_integration = YHUConfig(**self.yhu_integration) if isinstance(self.yhu_integration, dict) else YHUConfig()
-        
-        # Convert space dictionaries to ParkingSpaceConfig objects
-        processed_spaces = []
-        for space in self.spaces:
-            if isinstance(space, dict):
-                processed_spaces.append(ParkingSpaceConfig(**space))
-            elif isinstance(space, ParkingSpaceConfig):
-                processed_spaces.append(space)
-        self.spaces = processed_spaces
-    
-    @classmethod
-    def load_from_file(cls, config_path: Path) -> 'ParkingConfig':
-        """Load configuration from YAML file"""
-        try:
-            with open(config_path, 'r') as f:
-                config_data = yaml.safe_load(f)
-            
-            return cls(**config_data)
-            
-        except Exception as e:
-            # Return default configuration if loading fails
-            return cls.default()
-    
-    @classmethod
-    def default(cls) -> 'ParkingConfig':
-        """Create default configuration"""
-        # Default 4 parking spaces layout
-        default_spaces = [
-            ParkingSpaceConfig(
-                space_id=i,
-                x=100 + (i * 200),
-                y=200,
-                width=180,
-                height=120,
-                label=f"Space {i+1}"
-            )
-            for i in range(4)
-        ]
-        
-        return cls(
-            detection=DetectionConfig(),
-            video=VideoConfig(),
-            spaces=default_spaces,
-            yhu_integration=YHUConfig()
-        )
-    
-    def save_to_file(self, config_path: Path) -> None:
-        """Save configuration to YAML file"""
-        config_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Convert to dictionary for YAML serialization
-        config_dict = {
-            "detection": asdict(self.detection),
-            "video": asdict(self.video),
-            "spaces": [space.to_dict() for space in self.spaces],
-            "api_port": self.api_port,
-            "debug": self.debug,
-            "yhu_integration": asdict(self.yhu_integration)
-        }
-        
-        with open(config_path, 'w') as f:
-            yaml.dump(config_dict, f, default_flow_style=False, indent=2)
-
-
-class ConfigManager:
-    """Manages parking monitor configuration with environment-based loading"""
-    
-    def __init__(self, config_dir: Optional[Path] = None, environment: Optional[str] = None):
-        if config_dir is None:
-            # Use project-relative config directory
-            project_root = Path(__file__).parent.parent
-            config_dir = project_root / "config"
-        
-        self.config_dir = config_dir
-        self.environment = environment or self._detect_environment()
-        
-        # Determine config file based on environment
-        self.config_file = self._get_config_file()
-        self._config: Optional[Dict[str, Any]] = None
-        self._parsed_config: Optional['ParkingConfig'] = None
-    
-    def _detect_environment(self) -> str:
-        """Detect environment from environment variables or default to staging"""
-        import os
-        
-        # Check environment variable first
-        env = os.getenv('PARKING_MONITOR_ENV', os.getenv('ENVIRONMENT', ''))
-        
-        if env.lower() in ['production', 'prod']:
-            return 'production'
-        elif env.lower() in ['preprod', 'pre-prod', 'preproduction']:
-            return 'preprod'
-        elif env.lower() in ['staging', 'stage', 'dev', 'development']:
-            return 'staging'
-        
-        # Default to staging for development
-        return 'staging'
-    
-    def _get_config_file(self) -> Path:
-        """Get config file path for current environment"""
-        return self.config_dir / f"{self.environment}.yaml"
-    
-    def _load_yaml_with_inheritance(self, config_path: Path) -> Dict[str, Any]:
-        """Load YAML file with extends support"""
-        if not config_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {config_path}")
-        
-        with open(config_path, 'r') as f:
-            config_data = yaml.safe_load(f)
-        
-        # Handle inheritance via 'extends' key
-        if 'extends' in config_data:
-            parent_file = config_data.pop('extends')
-            parent_path = self.config_dir / parent_file
-            
-            # Load parent configuration
-            parent_config = self._load_yaml_with_inheritance(parent_path)
-            
-            # Deep merge parent and current config
-            merged_config = self._deep_merge(parent_config, config_data)
-            return merged_config
-        
-        return config_data
-    
-    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-        """Deep merge two dictionaries, with override taking precedence"""
-        result = base.copy()
-        
-        for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = self._deep_merge(result[key], value)
-            else:
-                result[key] = value
-        
-        return result
-    
-    def _inject_environment_variables(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Inject environment variables into configuration"""
-        import os
-        
-        # Environment variable mappings
-        env_mappings = {
-            'PARKING_MONITOR_PORT': ['service', 'port'],
-            'PARKING_MONITOR_LOG_LEVEL': ['service', 'log_level'],
-            'PARKING_MONITOR_MODEL_PATH': ['detection', 'model_path'],
-            'PARKING_MONITOR_CONFIDENCE': ['detection', 'confidence_threshold'],
-            'PARKING_MONITOR_CAMERA_SOURCE': ['camera', 'source'],
-            'PARKING_MONITOR_DEBUG': ['development', 'debug_api_enabled'],
-            'TAILSCALE_SUBNET': ['api', 'cors_origins'],
-        }
-        
-        result = config.copy()
-        
-        for env_var, config_path in env_mappings.items():
-            env_value = os.getenv(env_var)
-            if env_value is not None:
-                # Navigate to the nested config location
-                current = result
-                for key in config_path[:-1]:
-                    if key not in current:
-                        current[key] = {}
-                    current = current[key]
-                
-                # Set the value with appropriate type conversion
-                final_key = config_path[-1]
-                if final_key == 'port':
-                    current[final_key] = int(env_value)
-                elif final_key == 'confidence_threshold':
-                    current[final_key] = float(env_value)
-                elif final_key in ['debug_api_enabled']:
-                    current[final_key] = env_value.lower() in ['true', '1', 'yes', 'on']
-                elif final_key == 'cors_origins' and env_var == 'TAILSCALE_SUBNET':
-                    # Special handling for Tailscale subnet
-                    subnet_base = env_value.split('/')[0]
-                    cors_entry = f"http://{subnet_base}:*"
-                    if cors_entry not in current.get(final_key, []):
-                        current.setdefault(final_key, []).append(cors_entry)
-                else:
-                    current[final_key] = env_value
-        
-        return result
-    
-    @property
-    def config(self) -> 'ParkingConfig':
-        """Get current configuration, loading if necessary"""
-        if self._parsed_config is None:
-            self.load_config()
-        return self._parsed_config
-    
-    def load_config(self) -> 'ParkingConfig':
-        """Load configuration from environment-specific file"""
-        try:
-            # Load YAML configuration with inheritance
-            config_data = self._load_yaml_with_inheritance(self.config_file)
-            
-            # Inject environment variables
-            config_data = self._inject_environment_variables(config_data)
-            
-            # Store raw config for debugging
-            self._config = config_data
-            
-            # Convert to legacy ParkingConfig format for backward compatibility
-            legacy_config = self._convert_to_legacy_format(config_data)
-            self._parsed_config = ParkingConfig(**legacy_config)
-            
-        except Exception as e:
-            print(f"Warning: Failed to load config from {self.config_file}: {e}")
-            print("Falling back to default configuration")
-            # Fallback to default configuration
-            self._parsed_config = ParkingConfig.default()
-            self._config = {}
-        
-        return self._parsed_config
-    
-    def _convert_to_legacy_format(self, config_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert new YAML format to legacy ParkingConfig format"""
-        # Map new format to legacy format
-        legacy_config = {
-            'api_port': config_data.get('service', {}).get('port', 9091),
-            'debug': config_data.get('development', {}).get('debug_api_enabled', False),
-        }
-        
-        # Detection configuration
-        detection_config = config_data.get('detection', {})
-        legacy_config['detection'] = {
-            'confidence_threshold': detection_config.get('confidence_threshold', 0.5),
-            'model_path': detection_config.get('model_path', 'models/yolo11m.pt'),
-            'processing_fps': detection_config.get('target_fps', 10),
-            'vehicle_classes': ["car", "truck", "bus", "motorcycle"]  # Default classes
-        }
-        
-        # Video configuration
-        camera_config = config_data.get('camera', {})
-        legacy_config['video'] = {
-            'source_path': str(camera_config.get('source', 0)),
-            'rotation_enabled': camera_config.get('rotation', {}).get('enabled', True),
-            'rotation_videos': camera_config.get('rotation', {}).get('videos', ["current.mp4"]),
-            'rotation_interval': camera_config.get('rotation', {}).get('interval_seconds', 300)
-        }
-        
-        # Parking spaces configuration
-        zones = config_data.get('parking_zones', {}).get('zones', [])
-        spaces = []
-        for i, zone in enumerate(zones):
-            if 'coordinates' in zone:
-                coords = zone['coordinates']
-                if len(coords) >= 2:
-                    x = coords[0][0] if len(coords[0]) >= 2 else 100
-                    y = coords[0][1] if len(coords[0]) >= 2 else 200
-                    width = coords[1][0] - x if len(coords) >= 2 else 180
-                    height = coords[2][1] - y if len(coords) >= 3 else 120
-                    
-                    spaces.append({
-                        'space_id': i,
-                        'x': x,
-                        'y': y,
-                        'width': width,
-                        'height': height,
-                        'label': zone.get('name', f'Space {i+1}')
-                    })
-        
-        # If no zones, create default spaces
-        if not spaces:
-            spaces = [
-                {
-                    'space_id': i,
-                    'x': 100 + (i * 200),
-                    'y': 200,
-                    'width': 180,
-                    'height': 120,
-                    'label': f'Space {i+1}'
-                }
-                for i in range(4)
-            ]
-        
-        legacy_config['spaces'] = spaces
-        
-        return legacy_config
-    
-    def get_raw_config(self) -> Dict[str, Any]:
-        """Get raw configuration data (new format)"""
-        if self._config is None:
-            self.load_config()
-        return self._config
-    
-    def get_environment(self) -> str:
-        """Get current environment"""
-        return self.environment
-    
-    def save_config(self) -> None:
-        """Save current configuration to file (legacy compatibility)"""
-        if self._parsed_config:
-            self._parsed_config.save_to_file(self.config_file)
-    
-    def update_spaces(self, spaces: List[Dict[str, Any]]) -> None:
-        """Update parking space configuration (legacy compatibility)"""
-        new_spaces = [ParkingSpaceConfig(**space) for space in spaces]
-        self.config.spaces = new_spaces
-        self.save_config()
-    
-    def get_spaces(self) -> List[ParkingSpaceConfig]:
-        """Get parking space configurations (legacy compatibility)"""
-        return self.config.spaces
-    
-    def reset_to_default(self) -> None:
-        """Reset configuration to default values (legacy compatibility)"""
-        self._parsed_config = ParkingConfig.default()
-        self._config = {}
-        self.save_config()

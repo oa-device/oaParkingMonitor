@@ -1,0 +1,102 @@
+# MVP Configuration for oaParkingMonitor
+# Updated with real parking zone coordinates (1920x1080 resolution)
+
+# Core processing settings
+snapshot_interval: 5  # seconds between snapshots
+confidence_threshold: 0.5
+model_path: "models/yolo11m.pt"
+
+# API settings
+api_port: 9091
+api_host: "0.0.0.0"
+
+# Video source - uses staging video feed by default
+video_source: ""  # Will default to staging video path
+
+# Processing state
+processing_enabled: true
+
+# Logging
+log_level: "INFO"
+debug: false
+
+# Real parking zone coordinates (1920x1080 resolution)
+parking_zones:
+  # Front row zones (A-series) - generally easy to detect except A1
+  - id: 1
+    space_id: 1
+    name: "A1"
+    description: "Front left space (partially visible)"
+    coordinates: [[308, 306], [151, 296], [151, 561]]
+    detection_difficulty: "hard"
+  
+  - id: 2
+    space_id: 2
+    name: "A2"
+    description: "Front row center-left"
+    coordinates: [[511, 320], [320, 308], [153, 576], [384, 611]]
+    detection_difficulty: "easy"
+  
+  - id: 3
+    space_id: 3
+    name: "A3"
+    description: "Front row center"
+    coordinates: [[711, 328], [520, 320], [392, 612], [625, 633]]
+    detection_difficulty: "easy"
+  
+  - id: 4
+    space_id: 4
+    name: "A4"
+    description: "Front row center-right"
+    coordinates: [[914, 335], [719, 328], [630, 633], [867, 652]]
+    detection_difficulty: "easy"
+  
+  - id: 5
+    space_id: 5
+    name: "A5"
+    description: "Front row right-center"
+    coordinates: [[1132, 344], [922, 337], [874, 654], [1117, 669]]
+    detection_difficulty: "easy"
+  
+  - id: 6
+    space_id: 6
+    name: "A6"
+    description: "Front row right"
+    coordinates: [[1354, 354], [1135, 339], [1129, 667], [1383, 674]]
+    detection_difficulty: "easy"
+  
+  - id: 7
+    space_id: 7
+    name: "A7"
+    description: "Front row far right"
+    coordinates: [[1588, 365], [1361, 349], [1388, 678], [1677, 690]]
+    detection_difficulty: "easy"
+  
+  # Back row zones (B-series) - hard to detect due to distance/angle
+  - id: 8
+    space_id: 8
+    name: "B1"
+    description: "Back row left"
+    coordinates: [[998, 0], [982, 48], [1142, 65], [1166, 0]]
+    detection_difficulty: "hard"
+  
+  - id: 9
+    space_id: 9
+    name: "B2"
+    description: "Back row center-left"
+    coordinates: [[1170, 0], [1151, 64], [1325, 81], [1338, 0]]
+    detection_difficulty: "hard"
+  
+  - id: 10
+    space_id: 10
+    name: "B3"
+    description: "Back row center-right"
+    coordinates: [[1349, 0], [1330, 84], [1516, 100], [1514, 0]]
+    detection_difficulty: "hard"
+  
+  - id: 11
+    space_id: 11
+    name: "B4"
+    description: "Back row right"
+    coordinates: [[1523, 3], [1519, 101], [1712, 100], [1689, 5]]
+    detection_difficulty: "hard"

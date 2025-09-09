@@ -52,9 +52,7 @@ dependencies = [
     "pyyaml>=6.0.0",
     "structlog>=23.0.0",
     
-    # Testing (moved to dev dependencies)
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
+    # Testing dependencies moved to dev section
 ]
 
 [project.optional-dependencies]
