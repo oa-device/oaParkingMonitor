@@ -255,19 +255,14 @@ check_dependencies() {
     
     activate_venv || return 1
     
-    # Define package names and their corresponding import names
-    declare -A package_imports=(
-        ["torch"]="torch"
-        ["ultralytics"]="ultralytics" 
-        ["fastapi"]="fastapi"
-        ["opencv-python"]="cv2"
-        ["numpy"]="numpy"
-        ["psutil"]="psutil"
-    )
+    # Define dependencies with their import names
+    local packages=("torch" "ultralytics" "fastapi" "opencv-python" "numpy" "psutil")
+    local imports=("torch" "ultralytics" "fastapi" "cv2" "numpy" "psutil")
     
     # Check each dependency
-    for package in "${!package_imports[@]}"; do
-        local import_name="${package_imports[$package]}"
+    for i in "${!packages[@]}"; do
+        local package="${packages[$i]}"
+        local import_name="${imports[$i]}"
         
         if python3 -c "import $import_name" 2>/dev/null; then
             local version
