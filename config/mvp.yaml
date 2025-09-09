@@ -20,83 +20,90 @@ processing_enabled: true
 log_level: "INFO"
 debug: false
 
-# Real parking zone coordinates (1920x1080 resolution)
+# Updated 12 parking zones with real coordinates (1920x1080 resolution)
 parking_zones:
-  # Front row zones (A-series) - generally easy to detect except A1
+  # A-series: Main visible row zones - easy to detect
   - id: 1
     space_id: 1
     name: "A1"
-    description: "Front left space (partially visible)"
-    coordinates: [[308, 306], [151, 296], [151, 561]]
-    detection_difficulty: "hard"
+    description: "Front left"
+    coordinates: [[327, 373], [243, 688], [521, 672], [559, 358]]
+    detection_difficulty: "easy"
   
   - id: 2
     space_id: 2
     name: "A2"
-    description: "Front row center-left"
-    coordinates: [[511, 320], [320, 308], [153, 576], [384, 611]]
+    description: "Front center-left"
+    coordinates: [[559, 358], [521, 672], [791, 662], [785, 346]]
     detection_difficulty: "easy"
   
   - id: 3
     space_id: 3
     name: "A3"
-    description: "Front row center"
-    coordinates: [[711, 328], [520, 320], [392, 612], [625, 633]]
+    description: "Front center"
+    coordinates: [[785, 346], [791, 662], [1044, 654], [988, 339]]
     detection_difficulty: "easy"
   
   - id: 4
     space_id: 4
     name: "A4"
-    description: "Front row center-right"
-    coordinates: [[914, 335], [719, 328], [630, 633], [867, 652]]
+    description: "Front center-right"
+    coordinates: [[988, 339], [1044, 654], [1287, 633], [1194, 330]]
     detection_difficulty: "easy"
   
   - id: 5
     space_id: 5
     name: "A5"
-    description: "Front row right-center"
-    coordinates: [[1132, 344], [922, 337], [874, 654], [1117, 669]]
+    description: "Front right-center"
+    coordinates: [[1194, 330], [1287, 633], [1521, 612], [1411, 320]]
     detection_difficulty: "easy"
   
   - id: 6
     space_id: 6
     name: "A6"
-    description: "Front row right"
-    coordinates: [[1354, 354], [1135, 339], [1129, 667], [1383, 674]]
+    description: "Front right"
+    coordinates: [[1411, 320], [1521, 612], [1770, 602], [1593, 315]]
     detection_difficulty: "easy"
   
   - id: 7
     space_id: 7
     name: "A7"
-    description: "Front row far right"
-    coordinates: [[1588, 365], [1361, 349], [1388, 678], [1677, 690]]
+    description: "Front far right"
+    coordinates: [[1593, 315], [1770, 602], [1898, 588], [1796, 296]]
     detection_difficulty: "easy"
   
-  # Back row zones (B-series) - hard to detect due to distance/angle
+  # B-series: Back row zones - hard to detect at top edge
   - id: 8
     space_id: 8
     name: "B1"
-    description: "Back row left"
-    coordinates: [[998, 0], [982, 48], [1142, 65], [1166, 0]]
+    description: "Back left"
+    coordinates: [[12, 9], [5, 105], [193, 115], [217, 10]]
     detection_difficulty: "hard"
   
   - id: 9
     space_id: 9
     name: "B2"
-    description: "Back row center-left"
-    coordinates: [[1170, 0], [1151, 64], [1325, 81], [1338, 0]]
+    description: "Back center-left"
+    coordinates: [[217, 10], [193, 115], [391, 96], [399, 12]]
     detection_difficulty: "hard"
   
   - id: 10
     space_id: 10
     name: "B3"
-    description: "Back row center-right"
-    coordinates: [[1349, 0], [1330, 84], [1516, 100], [1514, 0]]
+    description: "Back center"
+    coordinates: [[399, 12], [391, 96], [583, 79], [573, 0]]
     detection_difficulty: "hard"
   
   - id: 11
     space_id: 11
     name: "B4"
-    description: "Back row right"
-    coordinates: [[1523, 3], [1519, 101], [1712, 100], [1689, 5]]
+    description: "Back right-center"
+    coordinates: [[573, 0], [583, 79], [779, 43], [776, 3]]
+    detection_difficulty: "hard"
+  
+  - id: 12
+    space_id: 12
+    name: "B5"
+    description: "Back right"
+    coordinates: [[776, 3], [779, 43], [922, 48], [914, 7]]
     detection_difficulty: "hard"

@@ -3,6 +3,7 @@ Simplified MVP configuration for oaParkingMonitor
 Single configuration class with 6 default parking zones and snapshot processing
 """
 
+import logging
 import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -49,55 +50,8 @@ class MVPConfig:
     last_snapshot_epoch: float = 0.0
     processing_enabled: bool = True
     
-    # Updated 11 parking zones with real coordinates (1920x1080)
-    parking_zones: List[ParkingZone] = field(default_factory=lambda: [
-        # Main row zones (easy to detect, except A1)
-        ParkingZone(
-            id=1, space_id=1, name="A1", description="Front left space (partially visible)",
-            coordinates=[[308, 306], [151, 296], [151, 561]], detection_difficulty="hard"
-        ),
-        ParkingZone(
-            id=2, space_id=2, name="A2", description="Front row center-left",
-            coordinates=[[511, 320], [320, 308], [153, 576], [384, 611]], detection_difficulty="easy"
-        ),
-        ParkingZone(
-            id=3, space_id=3, name="A3", description="Front row center",
-            coordinates=[[711, 328], [520, 320], [392, 612], [625, 633]], detection_difficulty="easy"
-        ),
-        ParkingZone(
-            id=4, space_id=4, name="A4", description="Front row center-right",
-            coordinates=[[914, 335], [719, 328], [630, 633], [867, 652]], detection_difficulty="easy"
-        ),
-        ParkingZone(
-            id=5, space_id=5, name="A5", description="Front row right-center",
-            coordinates=[[1132, 344], [922, 337], [874, 654], [1117, 669]], detection_difficulty="easy"
-        ),
-        ParkingZone(
-            id=6, space_id=6, name="A6", description="Front row right",
-            coordinates=[[1354, 354], [1135, 339], [1129, 667], [1383, 674]], detection_difficulty="easy"
-        ),
-        ParkingZone(
-            id=7, space_id=7, name="A7", description="Front row far right",
-            coordinates=[[1588, 365], [1361, 349], [1388, 678], [1677, 690]], detection_difficulty="easy"
-        ),
-        # Back row zones (hard to detect)
-        ParkingZone(
-            id=8, space_id=8, name="B1", description="Back row left",
-            coordinates=[[998, 0], [982, 48], [1142, 65], [1166, 0]], detection_difficulty="hard"
-        ),
-        ParkingZone(
-            id=9, space_id=9, name="B2", description="Back row center-left", 
-            coordinates=[[1170, 0], [1151, 64], [1325, 81], [1338, 0]], detection_difficulty="hard"
-        ),
-        ParkingZone(
-            id=10, space_id=10, name="B3", description="Back row center-right",
-            coordinates=[[1349, 0], [1330, 84], [1516, 100], [1514, 0]], detection_difficulty="hard"
-        ),
-        ParkingZone(
-            id=11, space_id=11, name="B4", description="Back row right",
-            coordinates=[[1523, 3], [1519, 101], [1712, 100], [1689, 5]], detection_difficulty="hard"
-        )
-    ])
+    # Parking zones loaded from configuration file (no hardcoded defaults)
+    parking_zones: List[ParkingZone] = field(default_factory=list)
     
     # Logging settings
     log_level: str = "INFO"
@@ -112,6 +66,39 @@ class MVPConfig:
         # Initialize last snapshot time to current time
         if self.last_snapshot_epoch == 0.0:
             self.last_snapshot_epoch = time.time()
+        
+        # Load default zones from config file if no zones provided
+        if not self.parking_zones:
+            self._load_default_zones()
+    
+    def _load_default_zones(self):
+        """Load default parking zones from config/mvp.yaml"""
+        try:
+            import yaml
+            config_path = Path(__file__).parent.parent / "config" / "mvp.yaml"
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    config_data = yaml.safe_load(f)
+                
+                zones_data = config_data.get('parking_zones', [])
+                if zones_data:
+                    for zone_data in zones_data:
+                        zone = ParkingZone(
+                            id=zone_data['id'],
+                            space_id=zone_data.get('space_id', zone_data['id']),
+                            name=zone_data['name'],
+                            description=zone_data.get('description', f"Parking space {zone_data['name']}"),
+                            coordinates=zone_data['coordinates'],
+                            detection_difficulty=zone_data.get('detection_difficulty', 'normal')
+                        )
+                        self.parking_zones.append(zone)
+                    logging.info(f"Loaded {len(self.parking_zones)} default parking zones from {config_path}")
+                else:
+                    logging.warning(f"No parking zones found in {config_path}")
+            else:
+                logging.warning(f"Default config file not found: {config_path}")
+        except Exception as e:
+            logging.error(f"Failed to load default zones: {e}")
     
     def get_zone_by_id(self, zone_id: int) -> Optional[ParkingZone]:
         """Get parking zone by ID"""
@@ -128,9 +115,29 @@ class MVPConfig:
             zone.confidence = confidence
             zone.last_detection = time.time()
     
+    def get_total_zones(self) -> int:
+        """Get total number of parking zones"""
+        return len(self.parking_zones)
+    
+    def get_a_series_zones(self) -> List[ParkingZone]:
+        """Get A-series zones (main row - easy detection)"""
+        return [zone for zone in self.parking_zones if zone.name.startswith('A')]
+    
+    def get_b_series_zones(self) -> List[ParkingZone]:
+        """Get B-series zones (back row - hard detection)"""
+        return [zone for zone in self.parking_zones if zone.name.startswith('B')]
+    
+    def get_easy_zones_count(self) -> int:
+        """Get count of easy detection zones"""
+        return sum(1 for zone in self.parking_zones if zone.detection_difficulty == "easy")
+    
+    def get_hard_zones_count(self) -> int:
+        """Get count of hard detection zones"""
+        return sum(1 for zone in self.parking_zones if zone.detection_difficulty == "hard")
+
     def get_occupancy_summary(self) -> Dict[str, Any]:
         """Get overall occupancy summary"""
-        total_zones = len(self.parking_zones)
+        total_zones = self.get_total_zones()
         occupied_zones = sum(1 for zone in self.parking_zones if zone.occupied)
         occupancy_rate = occupied_zones / total_zones if total_zones > 0 else 0.0
         
@@ -176,7 +183,7 @@ class MVPConfig:
             "camera_mirror": self.camera_mirror,
             "last_snapshot_epoch": self.last_snapshot_epoch,
             "processing_enabled": self.processing_enabled,
-            "total_zones": len(self.parking_zones),
+            "total_zones": self.get_total_zones(),
             "log_level": self.log_level,
             "debug": self.debug
         }
@@ -217,10 +224,10 @@ class MVPConfigManager:
                         self.update_zones(parking_zones_data)
                     
                 else:
-                    print(f"Config file {config_file} not found, using defaults")
+                    logging.warning(f"Config file {config_file} not found, using defaults")
                     self._config = MVPConfig()
             except Exception as e:
-                print(f"Error loading config: {e}, using defaults")
+                logging.error(f"Error loading config: {e}, using defaults")
                 self._config = MVPConfig()
         else:
             self._config = MVPConfig()
@@ -270,7 +277,7 @@ class MVPConfigManager:
             
             return True
         except Exception as e:
-            print(f"Error saving config: {e}")
+            logging.error(f"Error saving config: {e}")
             return False
     
     def reset_to_defaults(self):
@@ -295,7 +302,7 @@ class MVPConfigManager:
             self.config.parking_zones = new_zones
             return True
         except Exception as e:
-            print(f"Error updating zones: {e}")
+            logging.error(f"Error updating zones: {e}")
             return False
     
     def get_environment(self) -> str:
@@ -303,35 +310,3 @@ class MVPConfigManager:
         return "mvp"
 
 
-# Legacy compatibility - redirect old classes to new MVP classes
-ConfigManager = MVPConfigManager
-ParkingConfig = MVPConfig
-
-# For backward compatibility with existing detector code
-@dataclass
-class ParkingSpaceConfig:
-    """Legacy parking space config for backward compatibility"""
-    space_id: int
-    x: int
-    y: int  
-    width: int
-    height: int
-    label: str = ""
-
-@dataclass
-class DetectionConfig:
-    """Legacy detection config for backward compatibility"""
-    confidence_threshold: float = 0.5
-    model_path: str = "models/yolo11m.pt"
-    processing_fps: int = 10
-    vehicle_classes: List[str] = field(default_factory=lambda: ["car", "truck", "bus", "motorcycle"])
-
-@dataclass
-class VideoConfig:
-    """Legacy video config for backward compatibility"""
-    source_path: str = ""
-    
-    def __post_init__(self):
-        if not self.source_path:
-            home = Path.home()
-            self.source_path = str(home / "orangead" / "staging-video-feed" / "videos" / "current.mp4")
