@@ -255,22 +255,55 @@ check_dependencies() {
     
     activate_venv || return 1
     
-    local deps=(
-        "torch"
-        "ultralytics" 
-        "fastapi"
-        "opencv-python"
-        "numpy"
-        "psutil"
+    # Define package names and their corresponding import names
+    declare -A package_imports=(
+        ["torch"]="torch"
+        ["ultralytics"]="ultralytics" 
+        ["fastapi"]="fastapi"
+        ["opencv-python"]="cv2"
+        ["numpy"]="numpy"
+        ["psutil"]="psutil"
     )
     
-    for dep in "${deps[@]}"; do
-        if python3 -c "import $dep" 2>/dev/null; then
+    # Check each dependency
+    for package in "${!package_imports[@]}"; do
+        local import_name="${package_imports[$package]}"
+        
+        if python3 -c "import $import_name" 2>/dev/null; then
             local version
-            version=$(python3 -c "import $dep; print(getattr($dep, '__version__', 'unknown'))" 2>/dev/null || echo "unknown")
-            log_success "$dep: $version"
+            # Get version with fallback strategies
+            if [[ "$package" == "opencv-python" ]]; then
+                version=$(python3 -c "import cv2; print(cv2.__version__)" 2>/dev/null || echo "unknown")
+            else
+                # Try multiple version detection strategies
+                version=$(python3 -c "
+import $import_name
+try:
+    # Try importlib.metadata first (Python 3.8+)
+    from importlib.metadata import version as get_version
+    print(get_version('$package'))
+except ImportError:
+    try:
+        # Fallback to pkg_resources
+        import pkg_resources
+        print(pkg_resources.get_distribution('$package').version)
+    except:
+        try:
+            # Try __version__ attribute
+            print(getattr($import_name, '__version__', 'unknown'))
+        except:
+            print('unknown')
+except:
+    try:
+        # Final fallback to __version__ attribute
+        print(getattr($import_name, '__version__', 'unknown'))
+    except:
+        print('unknown')
+" 2>/dev/null || echo "unknown")
+            fi
+            log_success "$package: $version"
         else
-            log_error "Missing dependency: $dep"
+            log_error "Missing dependency: $package"
             return 1
         fi
     done
