@@ -8,7 +8,7 @@ source "$(dirname "$0")/helpers.sh"
 
 # Script-specific configuration
 readonly SCRIPT_VERSION="2.0.0"
-readonly DEFAULT_CONFIG_FILE="config.yaml"
+readonly DEFAULT_CONFIG_FILE="config/mvp.yaml"
 
 # Command line argument parsing
 parse_arguments() {
