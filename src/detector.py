@@ -148,7 +148,42 @@ class MVPParkingDetector:
             raise
     
     def _capture_frame(self) -> Optional[np.ndarray]:
-    """Capture single frame from video source"""
+        """Capture single frame from video source"""
+        try:
+            # Determine if video source is a camera device or file path
+            video_source_str = str(self.video_source)
+            
+            # If it's a digit (camera device), convert to int
+            if video_source_str.isdigit():
+                video_input = int(video_source_str)
+                self.logger.debug(f"Using camera device: {video_input}")
+            else:
+                # It's a file path, check if it exists
+                if not self.video_source.exists():
+                    self.logger.warning(f"Video source not found: {self.video_source}")
+                    return None
+                video_input = str(self.video_source)
+                self.logger.debug(f"Using video file: {video_input}")
+            
+            # Open video capture
+            cap = cv2.VideoCapture(video_input)
+            if not cap.isOpened():
+                self.logger.error(f"Cannot open video source: {video_input}")
+                return None
+            
+            # Read frame
+            ret, frame = cap.read()
+            cap.release()
+            
+            if not ret:
+                self.logger.warning("Failed to read frame from video source")
+                return None
+            
+            return frame
+            
+        except Exception as e:
+            self.logger.error(f"Frame capture failed: {e}")
+            return None
     try:
         # Determine if video source is a camera device or file path
         video_source_str = str(self.video_source)
