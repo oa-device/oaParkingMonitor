@@ -5,260 +5,391 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parking Monitor Dashboard</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --color-primary: #1e293b;
+            --color-secondary: #475569;
+            --color-accent: #3b82f6;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-danger: #ef4444;
+            --color-bg-primary: #f8fafc;
+            --color-bg-secondary: #ffffff;
+            --color-text-primary: #0f172a;
+            --color-text-secondary: #64748b;
+            --color-border: #e2e8f0;
+            --color-border-light: #f1f5f9;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius: 6px;
+            --radius-lg: 8px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            line-height: 1.5;
             min-height: 100vh;
-            padding: 20px;
         }
         
-        .dashboard {
-            max-width: 1200px;
+        .dashboard-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .dashboard-header {
+            background-color: var(--color-bg-secondary);
+            border-bottom: 1px solid var(--color-border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .header-content {
+            max-width: 1400px;
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
-        .header {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            font-weight: 300;
+        .dashboard-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
         }
         
         .status-indicator {
-            display: inline-block;
-            padding: 8px 20px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 50px;
-            font-size: 0.9rem;
-            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background-color: var(--color-bg-primary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
         }
         
-        .content {
-            padding: 40px;
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--color-success);
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.disconnected {
+            background-color: var(--color-danger);
+            animation: none;
+        }
+        
+        .dashboard-content {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .metrics-section {
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-bottom: 1rem;
         }
         
         .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin-bottom: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
         }
         
         .metric-card {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            border-left: 5px solid #4facfe;
-            transition: transform 0.3s ease;
+            background-color: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.15s ease;
         }
         
         .metric-card:hover {
-            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .metric-header {
+            display: flex;
+            justify-content: between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
         }
         
         .metric-title {
-            color: #666;
-            font-size: 0.9rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--color-text-secondary);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
+            letter-spacing: 0.025em;
         }
         
         .metric-value {
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: 700;
-            color: #333;
-            margin-bottom: 5px;
+            color: var(--color-text-primary);
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            margin-bottom: 0.25rem;
         }
         
         .metric-unit {
-            color: #999;
-            font-size: 0.9rem;
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            font-weight: 500;
         }
         
-        .parking-spaces {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
+        .parking-section {
+            background-color: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 2rem;
         }
         
-        .parking-title {
-            font-size: 1.5rem;
-            color: #333;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .spaces-container {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
+        .parking-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
         }
         
         .parking-space {
-            width: 100px;
-            height: 60px;
-            border: 3px solid #ddd;
-            border-radius: 8px;
+            aspect-ratio: 3/2;
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            transition: all 0.3s ease;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.15s ease;
+            position: relative;
         }
         
         .parking-space.occupied {
-            background: #ff6b6b;
-            border-color: #ff5252;
-            color: white;
+            background-color: #fef2f2;
+            border-color: var(--color-danger);
+            color: var(--color-danger);
         }
         
-        .parking-space.free {
-            background: #51cf66;
-            border-color: #40c057;
-            color: white;
+        .parking-space.available {
+            background-color: #f0fdf4;
+            border-color: var(--color-success);
+            color: var(--color-success);
         }
         
         .system-health {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            gap: 1.5rem;
         }
         
-        .health-item {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        .health-card {
+            background-color: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
             text-align: center;
         }
         
         .health-value {
             font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 5px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            margin-bottom: 0.25rem;
         }
         
         .health-label {
-            color: #666;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            font-weight: 500;
             text-transform: uppercase;
+            letter-spacing: 0.025em;
         }
         
-        .footer {
-            background: #f8f9fa;
-            padding: 20px;
+        .dashboard-footer {
+            background-color: var(--color-bg-secondary);
+            border-top: 1px solid var(--color-border);
+            padding: 1rem 2rem;
             text-align: center;
-            color: #666;
         }
         
         .last-update {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
         }
         
         @keyframes pulse {
-            0% { opacity: 1; }
+            0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
-            100% { opacity: 1; }
         }
         
-        .live-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            background: #51cf66;
-            border-radius: 50%;
-            margin-right: 8px;
-            animation: pulse 2s infinite;
+        /* Status indicators */
+        .health-value.excellent { color: var(--color-success); }
+        .health-value.good { color: var(--color-success); }
+        .health-value.warning { color: var(--color-warning); }
+        .health-value.critical { color: var(--color-danger); }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .dashboard-content {
+                padding: 1rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .parking-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            }
+        }
+        
+        /* Loading states */
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        /* Professional table styling for detailed views */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--color-border-light);
+        }
+        
+        .data-table th {
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            background-color: var(--color-bg-primary);
         }
     </style>
 </head>
 <body>
-    <div class="dashboard">
-        <div class="header">
-            <h1>🚗 Parking Monitor Dashboard</h1>
-            <div class="status-indicator">
-                <span class="live-indicator"></span>
-                <span id="connectionStatus">Live Monitoring</span>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1 class="dashboard-title">Parking Monitor System</h1>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="connectionStatus">Connecting...</span>
+                </div>
             </div>
-        </div>
+        </header>
         
-        <div class="content">
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-title">Vehicles Detected</div>
-                    <div class="metric-value" id="vehiclesDetected">0</div>
-                    <div class="metric-unit">vehicles</div>
+        <main class="dashboard-content">
+            <section class="metrics-section">
+                <h2 class="section-title">System Metrics</h2>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">Vehicles Detected</div>
+                        </div>
+                        <div class="metric-value" id="vehiclesDetected">--</div>
+                        <div class="metric-unit">total count</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">Occupancy Rate</div>
+                        </div>
+                        <div class="metric-value" id="occupancyRate">--</div>
+                        <div class="metric-unit">percentage</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">Processing Rate</div>
+                        </div>
+                        <div class="metric-value" id="processingFps">--</div>
+                        <div class="metric-unit">fps</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">Frames Processed</div>
+                        </div>
+                        <div class="metric-value" id="totalFrames">--</div>
+                        <div class="metric-unit">total</div>
+                    </div>
                 </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">Occupancy Rate</div>
-                    <div class="metric-value" id="occupancyRate">0</div>
-                    <div class="metric-unit">%</div>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">Processing FPS</div>
-                    <div class="metric-value" id="processingFps">0</div>
-                    <div class="metric-unit">fps</div>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">Total Frames</div>
-                    <div class="metric-value" id="totalFrames">0</div>
-                    <div class="metric-unit">frames</div>
-                </div>
-            </div>
+            </section>
             
-            <div class="parking-spaces">
-                <h3 class="parking-title">Parking Spaces Status</h3>
-                <div class="spaces-container" id="parkingSpaces">
-                    <!-- Parking spaces will be populated by JavaScript -->
+            <section class="parking-section">
+                <h2 class="section-title">Parking Space Status</h2>
+                <div class="parking-grid" id="parkingSpaces">
+                    <!-- Parking spaces populated by JavaScript -->
                 </div>
-            </div>
+            </section>
             
-            <div class="system-health">
-                <div class="health-item">
-                    <div class="health-value" id="healthScore">0</div>
-                    <div class="health-label">Health Score</div>
+            <section class="metrics-section">
+                <h2 class="section-title">System Health</h2>
+                <div class="system-health">
+                    <div class="health-card">
+                        <div class="health-value" id="healthScore">--</div>
+                        <div class="health-label">Health Score</div>
+                    </div>
+                    
+                    <div class="health-card">
+                        <div class="health-value" id="cpuUsage">--</div>
+                        <div class="health-label">CPU Usage</div>
+                    </div>
+                    
+                    <div class="health-card">
+                        <div class="health-value" id="memoryUsage">--</div>
+                        <div class="health-label">Memory Usage</div>
+                    </div>
+                    
+                    <div class="health-card">
+                        <div class="health-value" id="uptime">--</div>
+                        <div class="health-label">System Uptime</div>
+                    </div>
                 </div>
-                
-                <div class="health-item">
-                    <div class="health-value" id="cpuUsage">0%</div>
-                    <div class="health-label">CPU Usage</div>
-                </div>
-                
-                <div class="health-item">
-                    <div class="health-value" id="memoryUsage">0%</div>
-                    <div class="health-label">Memory Usage</div>
-                </div>
-                
-                <div class="health-item">
-                    <div class="health-value" id="uptime">0s</div>
-                    <div class="health-label">Uptime</div>
-                </div>
-            </div>
-        </div>
+            </section>
+        </main>
         
-        <div class="footer">
+        <footer class="dashboard-footer">
             <div class="last-update">Last updated: <span id="lastUpdate">Never</span></div>
-        </div>
+        </footer>
     </div>
 
     <script>
@@ -266,29 +397,58 @@
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/dashboard/ws`;
         let ws;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        
+        function updateConnectionStatus(connected) {
+            const statusDot = document.getElementById('statusDot');
+            const connectionStatus = document.getElementById('connectionStatus');
+            
+            if (connected) {
+                statusDot.classList.remove('disconnected');
+                connectionStatus.textContent = 'Live Monitoring';
+                reconnectAttempts = 0;
+            } else {
+                statusDot.classList.add('disconnected');
+                connectionStatus.textContent = 'Disconnected';
+            }
+        }
         
         function connectWebSocket() {
+            if (reconnectAttempts >= maxReconnectAttempts) {
+                console.log('Max reconnection attempts reached');
+                return;
+            }
+            
             ws = new WebSocket(wsUrl);
             
             ws.onopen = function() {
                 console.log('WebSocket connected');
-                document.getElementById('connectionStatus').textContent = 'Live Monitoring';
+                updateConnectionStatus(true);
             };
             
             ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                updateDashboard(data);
+                try {
+                    const data = JSON.parse(event.data);
+                    updateDashboard(data);
+                } catch (error) {
+                    console.error('Error parsing WebSocket data:', error);
+                }
             };
             
             ws.onclose = function() {
                 console.log('WebSocket disconnected');
-                document.getElementById('connectionStatus').textContent = 'Disconnected';
-                // Reconnect after 3 seconds
-                setTimeout(connectWebSocket, 3000);
+                updateConnectionStatus(false);
+                reconnectAttempts++;
+                
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    setTimeout(connectWebSocket, Math.pow(2, reconnectAttempts) * 1000);
+                }
             };
             
             ws.onerror = function(error) {
                 console.error('WebSocket error:', error);
+                updateConnectionStatus(false);
             };
         }
         
@@ -296,64 +456,117 @@
             const stats = data.stats || {};
             const health = data.health || {};
             
-            // Update metrics
-            document.getElementById('vehiclesDetected').textContent = stats.vehicles_detected || 0;
-            document.getElementById('occupancyRate').textContent = stats.occupancy_rate || 0;
-            document.getElementById('processingFps').textContent = (stats.processing_fps || 0).toFixed(1);
-            document.getElementById('totalFrames').textContent = (stats.total_frames || 0).toLocaleString();
+            // Update metrics with proper formatting
+            document.getElementById('vehiclesDetected').textContent = 
+                (stats.vehicles_detected || 0).toLocaleString();
+            document.getElementById('occupancyRate').textContent = 
+                Math.round(stats.occupancy_rate || 0) + '%';
+            document.getElementById('processingFps').textContent = 
+                (stats.processing_fps || 0).toFixed(1);
+            document.getElementById('totalFrames').textContent = 
+                (stats.total_frames || 0).toLocaleString();
             
             // Update parking spaces
-            updateParkingSpaces(stats.total_spaces || 4, stats.occupied_spaces || 0);
+            updateParkingSpaces(stats.total_spaces || 8, stats.occupied_spaces || 0);
             
-            // Update health metrics
-            document.getElementById('healthScore').textContent = Math.round(health.score || 0);
-            document.getElementById('cpuUsage').textContent = Math.round(health.cpu_percent || 0) + '%';
-            document.getElementById('memoryUsage').textContent = Math.round(health.memory_percent || 0) + '%';
+            // Update health metrics with color coding
+            const healthScore = Math.round(health.score || 0);
+            const healthElement = document.getElementById('healthScore');
+            healthElement.textContent = healthScore + '%';
+            healthElement.className = 'health-value ' + getHealthClass(healthScore);
+            
+            const cpuUsage = Math.round(health.cpu_percent || 0);
+            const cpuElement = document.getElementById('cpuUsage');
+            cpuElement.textContent = cpuUsage + '%';
+            cpuElement.className = 'health-value ' + getUsageClass(cpuUsage);
+            
+            const memoryUsage = Math.round(health.memory_percent || 0);
+            const memoryElement = document.getElementById('memoryUsage');
+            memoryElement.textContent = memoryUsage + '%';
+            memoryElement.className = 'health-value ' + getUsageClass(memoryUsage);
+            
             document.getElementById('uptime').textContent = formatUptime(stats.uptime || 0);
             
             // Update last update time
             document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
         }
         
+        function getHealthClass(score) {
+            if (score >= 90) return 'excellent';
+            if (score >= 75) return 'good';
+            if (score >= 50) return 'warning';
+            return 'critical';
+        }
+        
+        function getUsageClass(usage) {
+            if (usage >= 90) return 'critical';
+            if (usage >= 75) return 'warning';
+            return 'good';
+        }
+        
         function updateParkingSpaces(totalSpaces, occupiedSpaces) {
             const container = document.getElementById('parkingSpaces');
             container.innerHTML = '';
             
-            for (let i = 0; i < totalSpaces; i++) {
+            for (let i = 1; i <= totalSpaces; i++) {
                 const space = document.createElement('div');
-                space.className = `parking-space ${i < occupiedSpaces ? 'occupied' : 'free'}`;
-                space.textContent = `Space ${i + 1}`;
+                const isOccupied = i <= occupiedSpaces;
+                
+                space.className = `parking-space ${isOccupied ? 'occupied' : 'available'}`;
+                space.textContent = `${i.toString().padStart(2, '0')}`;
+                space.title = `Space ${i} - ${isOccupied ? 'Occupied' : 'Available'}`;
+                
                 container.appendChild(space);
             }
         }
         
         function formatUptime(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = Math.floor(seconds % 60);
+            if (seconds < 60) return `${seconds}s`;
             
-            if (hours > 0) {
-                return `${hours}h ${minutes}m`;
-            } else if (minutes > 0) {
-                return `${minutes}m ${secs}s`;
-            } else {
-                return `${secs}s`;
-            }
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m`;
+            
+            const hours = Math.floor(minutes / 60);
+            const remainingMinutes = minutes % 60;
+            if (hours < 24) return `${hours}h ${remainingMinutes}m`;
+            
+            const days = Math.floor(hours / 24);
+            const remainingHours = hours % 24;
+            return `${days}d ${remainingHours}h`;
         }
         
-        // Initialize WebSocket connection
-        connectWebSocket();
-        
-        // Initial load of data
-        fetch('/dashboard/api/data')
-            .then(response => response.json())
-            .then(data => {
-                updateDashboard({
-                    stats: data.stats,
-                    health: data.health
+        // Initialize application
+        function initializeDashboard() {
+            // Connect WebSocket
+            connectWebSocket();
+            
+            // Load initial data
+            fetch('/dashboard/api/data')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    updateDashboard({
+                        stats: data.stats,
+                        health: data.health
+                    });
+                })
+                .catch(error => {
+                    console.error('Initial data load error:', error);
+                    // Show default values or error state
+                    updateDashboard({ stats: {}, health: {} });
                 });
-            })
-            .catch(error => console.error('Initial data load error:', error));
+        }
+        
+        // Start the dashboard when DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDashboard);
+        } else {
+            initializeDashboard();
+        }
     </script>
 </body>
 </html>
