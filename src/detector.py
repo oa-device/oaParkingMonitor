@@ -50,8 +50,11 @@ class MVPParkingDetector:
         self.config_manager = MVPConfigManager()
         self.config = self.config_manager.config
         
-        # Video source setup
-        self.video_source = Path(self.config.video_source)
+        # Video source setup - handle both camera devices and file paths
+        if self.config.video_source.isdigit():
+            self.video_source = self.config.video_source  # Keep as string for camera device
+        else:
+            self.video_source = Path(self.config.video_source)  # Convert to Path for file
         self.model_path = Path.home() / "orangead" / "parking-monitor" / self.config.model_path
         
         # Device detection
@@ -145,32 +148,42 @@ class MVPParkingDetector:
             raise
     
     def _capture_frame(self) -> Optional[np.ndarray]:
-        """Capture single frame from video source"""
-        try:
-            # Check if video source exists
+    """Capture single frame from video source"""
+    try:
+        # Determine if video source is a camera device or file path
+        video_source_str = str(self.video_source)
+        
+        # If it's a digit (camera device), convert to int
+        if video_source_str.isdigit():
+            video_input = int(video_source_str)
+            self.logger.debug(f"Using camera device: {video_input}")
+        else:
+            # It's a file path, check if it exists
             if not self.video_source.exists():
                 self.logger.warning(f"Video source not found: {self.video_source}")
                 return None
-            
-            # Open video capture
-            cap = cv2.VideoCapture(str(self.video_source))
-            if not cap.isOpened():
-                self.logger.error(f"Cannot open video: {self.video_source}")
-                return None
-            
-            # Read frame
-            ret, frame = cap.read()
-            cap.release()
-            
-            if not ret:
-                self.logger.warning("Failed to read frame from video")
-                return None
-            
-            return frame
-            
-        except Exception as e:
-            self.logger.error(f"Frame capture failed: {e}")
+            video_input = str(self.video_source)
+            self.logger.debug(f"Using video file: {video_input}")
+        
+        # Open video capture
+        cap = cv2.VideoCapture(video_input)
+        if not cap.isOpened():
+            self.logger.error(f"Cannot open video source: {video_input}")
             return None
+        
+        # Read frame
+        ret, frame = cap.read()
+        cap.release()
+        
+        if not ret:
+            self.logger.warning("Failed to read frame from video source")
+            return None
+        
+        return frame
+        
+    except Exception as e:
+        self.logger.error(f"Frame capture failed: {e}")
+        return None
     
     def _detect_vehicles(self, frame: np.ndarray) -> List[VehicleDetection]:
         """Run YOLO detection on frame"""
