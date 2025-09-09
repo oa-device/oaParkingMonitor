@@ -103,14 +103,14 @@ class MVPConfig:
     debug: bool = False
     
     def __post_init__(self):
-    """Initialize default values and paths"""
-    if not self.video_source:
-        # Default to camera device 0 for production, staging path only in specific environments
-        self.video_source = "0"
-    
-    # Initialize last snapshot time to current time
-    if self.last_snapshot_epoch == 0.0:
-        self.last_snapshot_epoch = time.time()
+        """Initialize default values and paths"""
+        if not self.video_source:
+            # Default to camera device 0 for production, staging path only in specific environments
+            self.video_source = "0"
+        
+        # Initialize last snapshot time to current time
+        if self.last_snapshot_epoch == 0.0:
+            self.last_snapshot_epoch = time.time()
     
     def get_zone_by_id(self, zone_id: int) -> Optional[ParkingZone]:
         """Get parking zone by ID"""
