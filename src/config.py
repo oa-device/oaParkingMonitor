@@ -46,6 +46,11 @@ class MVPConfig:
     video_source: str = ""  # Default fallback, overridden by YAML
     camera_mirror: bool = False  # Default fallback, overridden by YAML
     
+    # Camera settings for focus and initialization
+    camera_warmup_frames: int = 10  # Number of frames to discard during camera warmup
+    camera_autofocus: bool = True  # Enable autofocus if supported
+    camera_buffer_size: int = 1  # Camera buffer size to reduce latency
+    
     # Processing state
     last_snapshot_epoch: float = 0.0
     processing_enabled: bool = True  # Default fallback, overridden by YAML
@@ -97,6 +102,9 @@ class MVPConfig:
                     'api_host': 'api_host',
                     'video_source': 'video_source',
                     'camera_mirror': 'camera_mirror',
+                    'camera_warmup_frames': 'camera_warmup_frames',
+                    'camera_autofocus': 'camera_autofocus',
+                    'camera_buffer_size': 'camera_buffer_size',
                     'processing_enabled': 'processing_enabled',
                     'log_level': 'log_level',
                     'debug': 'debug'
@@ -276,6 +284,9 @@ class MVPConfigManager:
                 "api_host": self.config.api_host,
                 "video_source": self.config.video_source,
                 "camera_mirror": self.config.camera_mirror,
+                "camera_warmup_frames": self.config.camera_warmup_frames,
+                "camera_autofocus": self.config.camera_autofocus,
+                "camera_buffer_size": self.config.camera_buffer_size,
                 "processing_enabled": self.config.processing_enabled,
                 "log_level": self.config.log_level,
                 "debug": self.config.debug,

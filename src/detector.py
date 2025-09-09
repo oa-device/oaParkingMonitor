@@ -67,6 +67,11 @@ class MVPParkingDetector:
         self.last_snapshot: Optional[SnapshotResult] = None
         self.current_frame: Optional[np.ndarray] = None
         
+        # Camera state for persistent connection
+        self.cap: Optional[cv2.VideoCapture] = None
+        self.is_camera_device = video_source_str.isdigit() if isinstance(self.video_source, str) else False
+        self.camera_initialized = False
+        
         # Statistics for API compatibility
         self.stats = {
             "total_frames": 0,
@@ -119,9 +124,72 @@ class MVPParkingDetector:
         except Exception as e:
             self.logger.warning(f"Device detection failed: {e}, using CPU")
             return "cpu"
+
+    
+    async def _initialize_camera(self):
+        """Initialize camera with warm-up and autofocus settings"""
+        if self.camera_initialized or not self.is_camera_device:
+            return
+        
+        try:
+            # For camera devices, create persistent connection
+            video_input = int(str(self.video_source))
+            self.logger.info(f"Initializing camera device: {video_input}")
+            
+            self.cap = cv2.VideoCapture(video_input)
+            if not self.cap.isOpened():
+                self.logger.error(f"Cannot open camera device: {video_input}")
+                raise RuntimeError(f"Camera device {video_input} not accessible")
+            
+            # Set camera properties for better performance and focus
+            try:
+                # Enable autofocus if supported and configured
+                if self.config.camera_autofocus:
+                    self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+                    self.logger.debug("Enabled camera autofocus")
+                
+                # Set buffer size to reduce latency
+                self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self.config.camera_buffer_size)
+                self.logger.debug(f"Set camera buffer size to {self.config.camera_buffer_size}")
+                
+                # Enable auto exposure if supported
+                self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)  # Auto mode
+                self.logger.debug("Enabled auto exposure")
+                
+                # Set reasonable resolution and FPS for consistency
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+                self.cap.set(cv2.CAP_PROP_FPS, 30)
+                
+            except Exception as prop_error:
+                self.logger.warning(f"Could not set all camera properties: {prop_error}")
+            
+            # Perform camera warm-up routine
+            self.logger.info(f"Starting camera warm-up with {self.config.camera_warmup_frames} frames...")
+            
+            for i in range(self.config.camera_warmup_frames):
+                ret, frame = self.cap.read()
+                if not ret:
+                    self.logger.warning(f"Failed to read warm-up frame {i+1}/{self.config.camera_warmup_frames}")
+                    continue
+                
+                # Small delay between frames to allow camera adjustment
+                await asyncio.sleep(0.1)
+                
+                self.logger.debug(f"Warm-up frame {i+1}/{self.config.camera_warmup_frames} captured")
+            
+            self.camera_initialized = True
+            self.logger.info("Camera initialization and warm-up completed successfully")
+            
+        except Exception as e:
+            self.logger.error(f"Camera initialization failed: {e}")
+            if self.cap:
+                self.cap.release()
+                self.cap = None
+            raise
     
     async def _load_model(self):
-        """Load YOLO model for detection"""
+        """Load YOLO model for detection with auto-download to correct location"""
         if self.model is not None:
             return
         
@@ -133,8 +201,38 @@ class MVPParkingDetector:
                 self.logger.info(f"Loading model from: {self.model_path}")
                 self.model = YOLO(str(self.model_path))
             else:
-                self.logger.warning(f"Model not found at {self.model_path}, using default")
-                self.model = YOLO("yolo11n.pt")  # Smaller default model
+                # Auto-download the configured model if missing
+                model_name = self.model_path.name  # e.g., "yolo11m.pt"
+                self.logger.info(f"Model not found at {self.model_path}, downloading {model_name}")
+                
+                # Ensure the models directory exists
+                self.model_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Download the configured model directly to the correct location
+                # Change to the models directory temporarily to download there
+                import os
+                original_cwd = os.getcwd()
+                try:
+                    os.chdir(str(self.model_path.parent))
+                    self.model = YOLO(model_name)  # Downloads to current directory (models/)
+                    self.logger.info(f"Downloaded and loaded model: {self.model_path}")
+                finally:
+                    os.chdir(original_cwd)
+                
+                # Verify the model was downloaded to the correct location
+                if not self.model_path.exists():
+                    # If download didn't work as expected, try fallback approach
+                    self.logger.warning(f"Model download to {self.model_path} failed, trying fallback")
+                    self.model = YOLO(model_name)  # Download to current directory
+                    
+                    # Move if downloaded to wrong location
+                    downloaded_path = Path(model_name)
+                    if downloaded_path.exists():
+                        downloaded_path.rename(self.model_path)
+                        self.logger.info(f"Moved downloaded model to: {self.model_path}")
+                    else:
+                        self.logger.warning(f"Failed to download {model_name}, using default yolo11n.pt")
+                        self.model = YOLO("yolo11n.pt")  # Fallback to smaller model
             
             # Move to optimal device
             if hasattr(self.model, 'to'):
@@ -151,37 +249,56 @@ class MVPParkingDetector:
     def _capture_frame(self) -> Optional[np.ndarray]:
         """Capture single frame from video source"""
         try:
-            # Determine if video source is a camera device or file path
             video_source_str = str(self.video_source)
             
-            # If it's a digit (camera device), convert to int
-            if video_source_str.isdigit():
-                video_input = int(video_source_str)
-                self.logger.debug(f"Using camera device: {video_input}")
+            if self.is_camera_device:
+                # Use persistent camera connection
+                if not self.camera_initialized or self.cap is None:
+                    self.logger.error("Camera not initialized. Call _initialize_camera() first.")
+                    return None
+                
+                # Read from persistent connection
+                ret, frame = self.cap.read()
+                if not ret:
+                    self.logger.warning("Failed to read frame from persistent camera connection")
+                    # Try to reinitialize camera on failure
+                    try:
+                        self.logger.info("Attempting camera reconnection...")
+                        self._reinitialize_camera_sync()
+                        ret, frame = self.cap.read() if self.cap else (False, None)
+                        if not ret:
+                            return None
+                    except Exception as reconnect_error:
+                        self.logger.error(f"Camera reconnection failed: {reconnect_error}")
+                        return None
+                
+                self.logger.debug(f"Captured frame from persistent camera connection")
+                
             else:
-                # It's a file path, check if it exists
+                # For video files, use the original approach (open/read/close)
                 if not self.video_source.exists():
                     self.logger.warning(f"Video source not found: {self.video_source}")
                     return None
+                
                 video_input = str(self.video_source)
                 self.logger.debug(f"Using video file: {video_input}")
-            
-            # Open video capture
-            cap = cv2.VideoCapture(video_input)
-            if not cap.isOpened():
-                self.logger.error(f"Cannot open video source: {video_input}")
-                return None
-            
-            # Read frame
-            ret, frame = cap.read()
-            cap.release()
-            
-            if not ret:
-                self.logger.warning("Failed to read frame from video source")
-                return None
+                
+                # Open video capture for file
+                cap = cv2.VideoCapture(video_input)
+                if not cap.isOpened():
+                    self.logger.error(f"Cannot open video source: {video_input}")
+                    return None
+                
+                # Read frame
+                ret, frame = cap.read()
+                cap.release()
+                
+                if not ret:
+                    self.logger.warning("Failed to read frame from video file")
+                    return None
             
             # Apply camera mirroring if enabled and using a camera device
-            if self.config.camera_mirror and video_source_str.isdigit():
+            if self.config.camera_mirror and self.is_camera_device:
                 frame = cv2.flip(frame, 1)  # Horizontal flip
                 self.logger.debug("Applied camera mirror (horizontal flip)")
             
@@ -190,6 +307,32 @@ class MVPParkingDetector:
         except Exception as e:
             self.logger.error(f"Frame capture failed: {e}")
             return None
+    
+    def _reinitialize_camera_sync(self):
+        """Synchronous camera reinitialization for use in _capture_frame"""
+        try:
+            if self.cap:
+                self.cap.release()
+            
+            video_input = int(str(self.video_source))
+            self.cap = cv2.VideoCapture(video_input)
+            
+            if not self.cap.isOpened():
+                raise RuntimeError(f"Cannot reopen camera device: {video_input}")
+            
+            # Reapply camera settings
+            if self.config.camera_autofocus:
+                self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self.config.camera_buffer_size)
+            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
+            
+            self.logger.info("Camera reconnected successfully")
+            
+        except Exception as e:
+            self.logger.error(f"Camera reinitialization failed: {e}")
+            self.cap = None
+            self.camera_initialized = False
+            raise
     
     def _detect_vehicles(self, frame: np.ndarray) -> List[VehicleDetection]:
         """Run YOLO detection on frame"""
@@ -384,6 +527,10 @@ class MVPParkingDetector:
             if self.model is None:
                 await self._load_model()
             
+            # Initialize camera if needed (for camera devices only)
+            if self.is_camera_device and not self.camera_initialized:
+                await self._initialize_camera()
+            
             # Capture frame
             frame = self._capture_frame()
             if frame is None:
@@ -463,9 +610,30 @@ class MVPParkingDetector:
         self.logger.info("Snapshot processing loop stopped")
     
     async def stop(self):
-        """Stop the detector"""
+        """Stop the detector and clean up resources"""
         self.running = False
-        self.logger.info("Detector stopped")
+        
+        # Clean up camera resources
+        if self.cap is not None:
+            try:
+                self.cap.release()
+                self.logger.info("Camera connection released")
+            except Exception as e:
+                self.logger.error(f"Error releasing camera: {e}")
+            finally:
+                self.cap = None
+                self.camera_initialized = False
+        
+        # Clean up model resources if needed
+        if self.model is not None:
+            try:
+                # YOLO models don't require explicit cleanup, but clear reference
+                self.model = None
+                self.logger.info("Model resources cleaned up")
+            except Exception as e:
+                self.logger.error(f"Error cleaning up model: {e}")
+        
+        self.logger.info("Detector stopped and resources cleaned up")
     
     def get_last_snapshot_image(self) -> Optional[bytes]:
         """Get last processed snapshot as JPEG bytes"""
