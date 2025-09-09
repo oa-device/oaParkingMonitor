@@ -5,14 +5,15 @@ Simplified detection engine that processes one frame every 5 seconds
 
 import asyncio
 import logging
+import platform
 import time
-import cv2
-import numpy as np
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
-import platform
-from dataclasses import dataclass
+
+import cv2
+import numpy as np
 
 from .config import MVPConfigManager, MVPConfig, ParkingZone
 

@@ -238,7 +238,7 @@
                 </div>
                 <div class="status-item">
                     <span class="status-label">Total Spaces</span>
-                    <span class="status-value" id="total-spaces">11</span>
+                    <span class="status-value" id="total-spaces">0</span>
                 </div>
                 <div class="status-item">
                     <span class="status-label">Occupied</span>
@@ -246,7 +246,7 @@
                 </div>
                 <div class="status-item">
                     <span class="status-label">Available</span>
-                    <span class="status-value status-healthy" id="available-spaces">11</span>
+                    <span class="status-value status-healthy" id="available-spaces">0</span>
                 </div>
                 <div class="status-item">
                     <span class="status-label">Occupancy Rate</span>
@@ -282,11 +282,11 @@
                     <div class="panel-header">Detection Stats</div>
                     <div class="stat-item">
                         <span>Easy Zones</span>
-                        <span class="stat-value status-healthy" id="easy-zones">6</span>
+                        <span class="stat-value status-healthy" id="easy-zones">0</span>
                     </div>
                     <div class="stat-item">
                         <span>Hard Zones</span>
-                        <span class="stat-value status-warning" id="hard-zones">5</span>
+                        <span class="stat-value status-warning" id="hard-zones">0</span>
                     </div>
                     <div class="stat-item">
                         <span>Processing FPS</span>
@@ -367,10 +367,11 @@
             }
             
             updateStatusBar(data) {
-                document.getElementById('total-spaces').textContent = data.total_spaces || 11;
+                const totalSpaces = data.total_spaces || 0;
+                document.getElementById('total-spaces').textContent = totalSpaces;
                 document.getElementById('occupied-spaces').textContent = data.occupied_spaces || 0;
                 document.getElementById('available-spaces').textContent = 
-                    (data.total_spaces || 11) - (data.occupied_spaces || 0);
+                    totalSpaces - (data.occupied_spaces || 0);
                 document.getElementById('occupancy-rate').textContent = 
                     Math.round((data.occupancy_rate || 0) * 100) + '%';
             }
@@ -455,6 +456,10 @@
                     (data.processing_fps || 0.2).toFixed(1);
                 document.getElementById('snapshot-interval').textContent = 
                     (data.snapshot_interval || 5) + 's';
+                document.getElementById('easy-zones').textContent = 
+                    data.easy_zones_count || 0;
+                document.getElementById('hard-zones').textContent = 
+                    data.hard_zones_count || 0;
             }
             
             setServiceStatus(status) {
