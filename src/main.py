@@ -174,7 +174,7 @@ async def get_detection():
     stats = await parking_service.get_detection_stats()
     return JSONResponse({
         "vehicles_detected": stats.get("vehicles_detected", 0),
-        "total_spaces": stats.get("total_zones", 6),
+        "total_spaces": stats.get("total_zones", 11),
         "occupied_spaces": stats.get("occupied_zones", 0), 
         "occupancy_rate": stats.get("occupancy_rate", 0.0),
         "last_detection": stats.get("last_detection"),
@@ -239,7 +239,7 @@ async def get_status():
         "next_snapshot_in": round(next_snapshot_in, 1),
         "model_loaded": parking_service.detector.stats.get("model_loaded", False),
         "device": parking_service.detector.device,
-        "total_zones": config_data.get("total_zones", 6)
+        "total_zones": config_data.get("total_zones", 11)
     })
 
 
