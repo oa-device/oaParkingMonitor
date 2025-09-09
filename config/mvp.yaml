@@ -10,13 +10,14 @@ model_path: "models/yolo11m.pt"
 api_port: 9091
 api_host: "0.0.0.0"
 
-# Video source - uses staging video feed by default
-video_source: ""  # Will default to staging video path
+# Video source settings
+video_source: ""  # Will default to staging video path, "0" for camera device
+camera_mirror: false  # No camera flip - coordinates mapped to normal capture
 
 # Processing state
 processing_enabled: true
 
-# Logging
+# Logging settings
 log_level: "INFO"
 debug: false
 

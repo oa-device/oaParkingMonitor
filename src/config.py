@@ -33,32 +33,39 @@ class ParkingZone:
 class MVPConfig:
     """Simplified MVP configuration for snapshot-based parking detection"""
     
-    # Core processing settings
-    snapshot_interval: int = 5  # seconds between snapshots
-    confidence_threshold: float = 0.5
-    model_path: str = "models/yolo11m.pt"
+    # Core processing settings - loaded from YAML
+    snapshot_interval: int = 5  # Default fallback, overridden by YAML
+    confidence_threshold: float = 0.5  # Default fallback, overridden by YAML  
+    model_path: str = "models/yolo11m.pt"  # Default fallback, overridden by YAML
     
-    # API settings
-    api_port: int = 9091
-    api_host: str = "0.0.0.0"
+    # API settings - loaded from YAML
+    api_port: int = 9091  # Default fallback, overridden by YAML
+    api_host: str = "0.0.0.0"  # Default fallback, overridden by YAML
     
-    # Video source settings
-    video_source: str = ""  # Will be set to default path
-    camera_mirror: bool = True  # Horizontally flip camera feed to match coordinate system
+    # Video source settings - loaded from YAML
+    video_source: str = ""  # Default fallback, overridden by YAML
+    camera_mirror: bool = False  # Default fallback, overridden by YAML
     
     # Processing state
     last_snapshot_epoch: float = 0.0
-    processing_enabled: bool = True
+    processing_enabled: bool = True  # Default fallback, overridden by YAML
     
-    # Parking zones loaded from configuration file (no hardcoded defaults)
+    # Parking zones loaded from configuration file
     parking_zones: List[ParkingZone] = field(default_factory=list)
     
-    # Logging settings
-    log_level: str = "INFO"
-    debug: bool = False
+    # Logging settings - loaded from YAML
+    log_level: str = "INFO"  # Default fallback, overridden by YAML
+    debug: bool = False  # Default fallback, overridden by YAML
+    
+    # Internal field to specify custom config path
+    _config_path: Optional[str] = field(default=None, init=False)
     
     def __post_init__(self):
-        """Initialize default values and paths"""
+        """Initialize configuration from YAML file"""
+        # Load configuration from YAML file (overrides defaults)
+        self._load_config_from_yaml()
+        
+        # Set fallback for video_source if still empty after YAML load
         if not self.video_source:
             # Default to camera device 0 for production, staging path only in specific environments
             self.video_source = "0"
@@ -66,20 +73,40 @@ class MVPConfig:
         # Initialize last snapshot time to current time
         if self.last_snapshot_epoch == 0.0:
             self.last_snapshot_epoch = time.time()
-        
-        # Load default zones from config file if no zones provided
-        if not self.parking_zones:
-            self._load_default_zones()
     
-    def _load_default_zones(self):
-        """Load default parking zones from config/mvp.yaml"""
+    def _load_config_from_yaml(self):
+        """Load configuration values and parking zones from config/mvp.yaml or custom path"""
         try:
             import yaml
-            config_path = Path(__file__).parent.parent / "config" / "mvp.yaml"
+            # Use custom config path if provided, otherwise use default
+            if self._config_path:
+                config_path = Path(self._config_path)
+            else:
+                config_path = Path(__file__).parent.parent / "config" / "mvp.yaml"
+            
             if config_path.exists():
                 with open(config_path, 'r') as f:
                     config_data = yaml.safe_load(f)
                 
+                # Load configuration values (override defaults)
+                config_mappings = {
+                    'snapshot_interval': 'snapshot_interval',
+                    'confidence_threshold': 'confidence_threshold', 
+                    'model_path': 'model_path',
+                    'api_port': 'api_port',
+                    'api_host': 'api_host',
+                    'video_source': 'video_source',
+                    'camera_mirror': 'camera_mirror',
+                    'processing_enabled': 'processing_enabled',
+                    'log_level': 'log_level',
+                    'debug': 'debug'
+                }
+                
+                for yaml_key, attr_name in config_mappings.items():
+                    if yaml_key in config_data:
+                        setattr(self, attr_name, config_data[yaml_key])
+                
+                # Load parking zones
                 zones_data = config_data.get('parking_zones', [])
                 if zones_data:
                     for zone_data in zones_data:
@@ -92,13 +119,13 @@ class MVPConfig:
                             detection_difficulty=zone_data.get('detection_difficulty', 'normal')
                         )
                         self.parking_zones.append(zone)
-                    logging.info(f"Loaded {len(self.parking_zones)} default parking zones from {config_path}")
+                    logging.info(f"Loaded configuration with {len(self.parking_zones)} parking zones from {config_path}")
                 else:
                     logging.warning(f"No parking zones found in {config_path}")
             else:
-                logging.warning(f"Default config file not found: {config_path}")
+                logging.warning(f"Configuration file not found: {config_path}, using defaults")
         except Exception as e:
-            logging.error(f"Failed to load default zones: {e}")
+            logging.error(f"Failed to load configuration: {e}, using defaults")
     
     def get_zone_by_id(self, zone_id: int) -> Optional[ParkingZone]:
         """Get parking zone by ID"""
@@ -205,31 +232,24 @@ class MVPConfigManager:
     
     def load_config(self, config_file: Optional[str] = None) -> MVPConfig:
         """Load configuration from file (if provided) or use defaults"""
-        if config_file:
-            try:
-                import yaml
-                config_path = Path(config_file)
-                if config_path.exists():
-                    with open(config_path, 'r') as f:
-                        config_data = yaml.safe_load(f)
-                    
-                    # Extract parking zones separately for proper initialization
-                    parking_zones_data = config_data.pop('parking_zones', [])
-                    
-                    # Create base config without zones
-                    self._config = MVPConfig(**config_data)
-                    
-                    # Update zones if provided
-                    if parking_zones_data:
-                        self.update_zones(parking_zones_data)
-                    
+        try:
+            self._config = MVPConfig()
+            
+            # Set custom config path if provided
+            if config_file:
+                custom_config_path = Path(config_file)
+                if custom_config_path.exists():
+                    self._config._config_path = config_file
+                    # Reload configuration from custom path
+                    self._config._load_config_from_yaml()
+                    logging.info(f"Loaded configuration from {config_file}")
                 else:
-                    logging.warning(f"Config file {config_file} not found, using defaults")
-                    self._config = MVPConfig()
-            except Exception as e:
-                logging.error(f"Error loading config: {e}, using defaults")
-                self._config = MVPConfig()
-        else:
+                    logging.warning(f"Config file {config_file} not found, using defaults from mvp.yaml")
+            else:
+                logging.info("Using default configuration from config/mvp.yaml")
+                
+        except Exception as e:
+            logging.error(f"Error loading config: {e}, using defaults")
             self._config = MVPConfig()
         
         return self._config
