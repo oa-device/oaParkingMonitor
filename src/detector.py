@@ -476,12 +476,16 @@ class MVPParkingDetector:
     
     def get_raw_frame_image(self) -> Optional[bytes]:
         """Get current raw frame (without overlays) as JPEG bytes"""
-        if self.current_frame is None:
+        # Try to capture a fresh frame first
+        fresh_frame = self._capture_frame()
+        frame_to_use = fresh_frame if fresh_frame is not None else self.current_frame
+        
+        if frame_to_use is None:
             return None
         
         try:
             # Encode as JPEG
-            _, buffer = cv2.imencode('.jpg', self.current_frame)
+            _, buffer = cv2.imencode('.jpg', frame_to_use)
             return buffer.tobytes()
         except Exception as e:
             self.logger.error(f"Raw frame encoding failed: {e}")
