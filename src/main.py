@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Production-Ready Parking Monitor Service
 Optimized for macOS Metal/MPS with comprehensive monitoring
@@ -961,11 +962,60 @@ async def root():
     """)
 
 
+def validate_startup_environment():
+    """Validate runtime environment and dependencies before starting service."""
+    import sys
+    from pathlib import Path
+    
+    # Check Python version
+    if sys.version_info < (3, 12):
+        logging.error(f"Python 3.12+ required, got {sys.version_info}")
+        return False
+        
+    # Check working directory has required files
+    required_files = ["pyproject.toml", "src/__init__.py", "config"]
+    for file_path in required_files:
+        if not Path(file_path).exists():
+            logging.error(f"Required file/directory missing: {file_path}")
+            logging.info(f"Current working directory: {os.getcwd()}")
+            logging.info(f"Directory contents: {list(Path('.').iterdir())}")
+            return False
+    
+    # Check for Apple Silicon for Metal/MPS optimizations
+    if platform.system() == "Darwin" and platform.machine() == "arm64":
+        logging.info("Apple Silicon detected - Metal Performance Shaders available")
+        os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+    
+    # Log environment info
+    logging.info("oaParkingMonitor starting")
+    logging.info(f"Python: {sys.version}")
+    logging.info(f"Platform: {platform.system()} {platform.machine()}")
+    logging.info(f"Working directory: {os.getcwd()}")
+    logging.info("Service will be available at http://0.0.0.0:9091")
+    
+    return True
+
 if __name__ == "__main__":
-    uvicorn.run(
-        "src.main:app",
-        host="0.0.0.0", 
-        port=9091,
-        reload=False,
-        log_level="info"
+    # Setup basic logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
+    
+    # Validate environment before starting
+    if not validate_startup_environment():
+        logging.error("Startup validation failed - exiting")
+        exit(1)
+    
+    # Start the service
+    try:
+        uvicorn.run(
+            "src.main:app",
+            host="0.0.0.0", 
+            port=9091,
+            reload=False,
+            log_level="info"
+        )
+    except Exception as e:
+        logging.error(f"Failed to start server: {e}")
+        exit(1)
