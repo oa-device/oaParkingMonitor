@@ -52,7 +52,8 @@ class MVPParkingDetector:
         self.config = self.config_manager.config
         
         # Video source setup - handle both camera devices and file paths
-        if self.config.video_source.isdigit():
+        video_source_str = str(self.config.video_source)
+        if video_source_str.isdigit():
             self.video_source = self.config.video_source  # Keep as string for camera device
         else:
             self.video_source = Path(self.config.video_source)  # Convert to Path for file
@@ -69,7 +70,7 @@ class MVPParkingDetector:
         
         # Camera state for persistent connection
         self.cap: Optional[cv2.VideoCapture] = None
-        self.is_camera_device = video_source_str.isdigit() if isinstance(self.video_source, str) else False
+        self.is_camera_device = video_source_str.isdigit()
         self.camera_initialized = False
         
         # Statistics for API compatibility
