@@ -43,6 +43,7 @@ class MVPConfig:
     
     # Video source settings
     video_source: str = ""  # Will be set to default path
+    camera_mirror: bool = True  # Horizontally flip camera feed to match coordinate system
     
     # Processing state
     last_snapshot_epoch: float = 0.0
@@ -172,6 +173,7 @@ class MVPConfig:
             "api_port": self.api_port,
             "api_host": self.api_host,
             "video_source": self.video_source,
+            "camera_mirror": self.camera_mirror,
             "last_snapshot_epoch": self.last_snapshot_epoch,
             "processing_enabled": self.processing_enabled,
             "total_zones": len(self.parking_zones),
@@ -246,6 +248,7 @@ class MVPConfigManager:
                 "api_port": self.config.api_port,
                 "api_host": self.config.api_host,
                 "video_source": self.config.video_source,
+                "camera_mirror": self.config.camera_mirror,
                 "processing_enabled": self.config.processing_enabled,
                 "log_level": self.config.log_level,
                 "debug": self.config.debug,
