@@ -244,7 +244,7 @@ class ParkingConfig(BaseModel):
                 "name": zone.name,
                 "description": zone.description,
                 "coordinates": zone.coordinates,
-                "detection_difficulty": zone.detection_difficulty.value,
+                "detection_difficulty": zone.detection_difficulty.value if hasattr(zone.detection_difficulty, "value") else zone.detection_difficulty,
                 "occupied": zone.occupied,
                 "confidence": zone.confidence,
                 "last_detection": zone.last_detection
@@ -296,7 +296,7 @@ class ParkingConfig(BaseModel):
             "last_snapshot_epoch": self.last_snapshot_epoch,
             
             # System settings
-            "log_level": self.log_level.value,
+            "log_level": self.log_level.value if hasattr(self.log_level, "value") else self.log_level,
             "debug": self.debug,
             
             # Zone information

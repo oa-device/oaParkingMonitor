@@ -549,7 +549,7 @@ class MVPParkingDetector:
                         
                         # Apply detection difficulty adjustment
                         adjusted_confidence = self._adjust_confidence_by_difficulty(
-                            detection.confidence, zone.detection_difficulty.value
+                            detection.confidence, zone.detection_difficulty.value if hasattr(zone.detection_difficulty, "value") else zone.detection_difficulty
                         )
                         
                         if adjusted_confidence >= self.config.processing.confidence_threshold:
@@ -567,7 +567,7 @@ class MVPParkingDetector:
                 "occupied": occupied,
                 "confidence": best_confidence,
                 "coordinates": zone.coordinates,
-                "detection_difficulty": zone.detection_difficulty.value,
+                "detection_difficulty": zone.detection_difficulty.value if hasattr(zone.detection_difficulty, "value") else zone.detection_difficulty,
                 "detection_count": zone_detection_count
             })
         
