@@ -73,6 +73,205 @@
             gap: 20px;
         }
         
+        .camera-controls-panel {
+            background: #2d2d2d;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .controls-section {
+            padding: 15px 20px;
+            border-bottom: 1px solid #3d3d3d;
+        }
+        
+        .controls-section:last-child {
+            border-bottom: none;
+        }
+        
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #00ff88;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-label {
+            display: block;
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+        
+        .control-input {
+            width: 100%;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 8px 10px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        
+        .control-input:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+        
+        .range-input {
+            width: 100%;
+            height: 5px;
+            border-radius: 5px;
+            background: #444;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .range-input::-webkit-slider-thumb {
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #00ff88;
+            cursor: pointer;
+        }
+        
+        .range-input::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #00ff88;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .range-value {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 2px;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn {
+            flex: 1;
+            background: #3d3d3d;
+            border: 1px solid #555;
+            border-radius: 5px;
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #4d4d4d;
+            border-color: #666;
+        }
+        
+        .btn.primary {
+            background: #00ff88;
+            border-color: #00ff88;
+            color: #000;
+        }
+        
+        .btn.primary:hover {
+            background: #00cc6b;
+        }
+        
+        .btn.danger {
+            background: #ff4444;
+            border-color: #ff4444;
+            color: #fff;
+        }
+        
+        .btn.danger:hover {
+            background: #cc3333;
+        }
+        
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .preset-btn {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            color: #ccc;
+            padding: 6px 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .preset-btn:hover {
+            background: #2a2a2a;
+            border-color: #555;
+            color: #fff;
+        }
+        
+        .preset-btn.active {
+            background: #00ff88;
+            border-color: #00ff88;
+            color: #000;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+            margin-left: 10px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #444;
+            transition: 0.3s;
+            border-radius: 20px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #00ff88;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+        
         .snapshot-panel {
             background: #2d2d2d;
             border-radius: 10px;
@@ -278,6 +477,119 @@
             </div>
             
             <div class="zones-panel">
+                <!-- Camera Controls Panel -->
+                <div class="camera-controls-panel">
+                    <div class="panel-header">
+                        <span>Camera Controls</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="camera-controls-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div id="camera-controls-content">
+                        <!-- Presets Section -->
+                        <div class="controls-section">
+                            <div class="section-title">Presets</div>
+                            <div class="preset-buttons">
+                                <button class="preset-btn" data-preset="outdoor_bright">Bright</button>
+                                <button class="preset-btn" data-preset="outdoor_normal">Normal</button>
+                                <button class="preset-btn" data-preset="indoor_low_light">Low Light</button>
+                                <button class="preset-btn" data-preset="high_contrast">High Contrast</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Exposure Section -->
+                        <div class="controls-section">
+                            <div class="section-title">Exposure & Brightness</div>
+                            <div class="control-group">
+                                <label class="control-label">Exposure</label>
+                                <input type="range" class="range-input" id="exposure-slider" 
+                                       min="0" max="1" step="0.01" value="0.25">
+                                <div class="range-value" id="exposure-value">0.25</div>
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label">Brightness</label>
+                                <input type="range" class="range-input" id="brightness-slider"
+                                       min="0" max="1" step="0.01" value="0.4">
+                                <div class="range-value" id="brightness-value">0.4</div>
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label">Gain</label>
+                                <input type="range" class="range-input" id="gain-slider"
+                                       min="0" max="1" step="0.01" value="0.3">
+                                <div class="range-value" id="gain-value">0.3</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Image Quality Section -->
+                        <div class="controls-section">
+                            <div class="section-title">Image Quality</div>
+                            <div class="control-group">
+                                <label class="control-label">Contrast</label>
+                                <input type="range" class="range-input" id="contrast-slider"
+                                       min="0" max="1" step="0.01" value="0.6">
+                                <div class="range-value" id="contrast-value">0.6</div>
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label">Saturation</label>
+                                <input type="range" class="range-input" id="saturation-slider"
+                                       min="0" max="1" step="0.01" value="0.5">
+                                <div class="range-value" id="saturation-value">0.5</div>
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label">Sharpness</label>
+                                <input type="range" class="range-input" id="sharpness-slider"
+                                       min="0" max="1" step="0.01" value="0.6">
+                                <div class="range-value" id="sharpness-value">0.6</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Enhancement Section -->
+                        <div class="controls-section">
+                            <div class="section-title">Enhancement</div>
+                            <div class="control-group">
+                                <label class="control-label">
+                                    Auto Enhance
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="auto-enhance-toggle" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </label>
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label">Gamma Correction</label>
+                                <input type="range" class="range-input" id="gamma-slider"
+                                       min="0.5" max="2" step="0.1" value="0.8">
+                                <div class="range-value" id="gamma-value">0.8</div>
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label">
+                                    CLAHE (Contrast Enhancement)
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="clahe-toggle" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </label>
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label">CLAHE Intensity</label>
+                                <input type="range" class="range-input" id="clahe-slider"
+                                       min="1" max="6" step="0.5" value="3">
+                                <div class="range-value" id="clahe-value">3.0</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Control Buttons -->
+                        <div class="controls-section">
+                            <div class="control-buttons">
+                                <button class="btn primary" id="apply-settings">Apply</button>
+                                <button class="btn danger" id="reset-settings">Reset</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="zones-grid">
                     <div class="panel-header">Parking Zones</div>
                     <div class="zone-row" id="front-zones">
@@ -327,12 +639,257 @@
             constructor() {
                 this.refreshInterval = 5000; // 5 seconds
                 this.lastUpdateEpoch = 0;
+                this.currentPreset = 'custom';
+                this.pendingChanges = false;
                 this.init();
             }
             
             init() {
+                this.setupCameraControls();
+                this.loadCameraSettings();
                 this.startAutoRefresh();
                 this.fetchData(); // Initial load
+            }
+            
+            setupCameraControls() {
+                // Toggle camera controls panel
+                const toggle = document.getElementById('camera-controls-toggle');
+                const content = document.getElementById('camera-controls-content');
+                
+                toggle.addEventListener('change', (e) => {
+                    content.style.display = e.target.checked ? 'block' : 'none';
+                });
+                
+                // Setup range input event listeners
+                const sliders = [
+                    'exposure', 'brightness', 'gain', 'contrast', 
+                    'saturation', 'sharpness', 'gamma', 'clahe'
+                ];
+                
+                sliders.forEach(name => {
+                    const slider = document.getElementById(`${name}-slider`);
+                    const valueDisplay = document.getElementById(`${name}-value`);
+                    
+                    slider.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        valueDisplay.textContent = value.toFixed(2);
+                        this.pendingChanges = true;
+                        this.currentPreset = 'custom';
+                        this.updatePresetButtons();
+                    });
+                });
+                
+                // Setup toggle switches
+                const toggles = ['auto-enhance', 'clahe'];
+                toggles.forEach(name => {
+                    const toggle = document.getElementById(`${name}-toggle`);
+                    toggle.addEventListener('change', () => {
+                        this.pendingChanges = true;
+                        this.currentPreset = 'custom';
+                        this.updatePresetButtons();
+                    });
+                });
+                
+                // Setup preset buttons
+                const presetButtons = document.querySelectorAll('.preset-btn');
+                presetButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const preset = btn.dataset.preset;
+                        this.applyPreset(preset);
+                    });
+                });
+                
+                // Setup control buttons
+                document.getElementById('apply-settings').addEventListener('click', () => {
+                    this.applySettings();
+                });
+                
+                document.getElementById('reset-settings').addEventListener('click', () => {
+                    this.resetSettings();
+                });
+            }
+            
+            async loadCameraSettings() {
+                try {
+                    const response = await fetch('/api/camera/settings');
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    
+                    const data = await response.json();
+                    const settings = data.camera_settings;
+                    
+                    // Update UI with current settings
+                    document.getElementById('exposure-slider').value = settings.exposure.value;
+                    document.getElementById('exposure-value').textContent = settings.exposure.value.toFixed(2);
+                    
+                    document.getElementById('brightness-slider').value = settings.image_quality.brightness;
+                    document.getElementById('brightness-value').textContent = settings.image_quality.brightness.toFixed(2);
+                    
+                    document.getElementById('gain-slider').value = settings.image_quality.gain;
+                    document.getElementById('gain-value').textContent = settings.image_quality.gain.toFixed(2);
+                    
+                    document.getElementById('contrast-slider').value = settings.image_quality.contrast;
+                    document.getElementById('contrast-value').textContent = settings.image_quality.contrast.toFixed(2);
+                    
+                    document.getElementById('saturation-slider').value = settings.image_quality.saturation;
+                    document.getElementById('saturation-value').textContent = settings.image_quality.saturation.toFixed(2);
+                    
+                    document.getElementById('sharpness-slider').value = settings.image_quality.sharpness;
+                    document.getElementById('sharpness-value').textContent = settings.image_quality.sharpness.toFixed(2);
+                    
+                    document.getElementById('gamma-slider').value = settings.enhancement.gamma_correction;
+                    document.getElementById('gamma-value').textContent = settings.enhancement.gamma_correction.toFixed(1);
+                    
+                    document.getElementById('clahe-slider').value = settings.enhancement.clahe_clip_limit;
+                    document.getElementById('clahe-value').textContent = settings.enhancement.clahe_clip_limit.toFixed(1);
+                    
+                    document.getElementById('auto-enhance-toggle').checked = settings.enhancement.auto_enhance;
+                    document.getElementById('clahe-toggle').checked = settings.enhancement.clahe_enabled;
+                    
+                    this.pendingChanges = false;
+                    
+                } catch (error) {
+                    console.error('Failed to load camera settings:', error);
+                }
+            }
+            
+            async applyPreset(presetName) {
+                try {
+                    const response = await fetch(`/api/camera/presets/${presetName}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        this.currentPreset = presetName;
+                        this.updatePresetButtons();
+                        await this.loadCameraSettings();
+                        this.showMessage(`Applied preset: ${presetName}`, 'success');
+                    } else {
+                        this.showMessage(`Failed to apply preset: ${result.message}`, 'error');
+                    }
+                    
+                } catch (error) {
+                    console.error('Failed to apply preset:', error);
+                    this.showMessage('Failed to apply preset', 'error');
+                }
+            }
+            
+            async applySettings() {
+                try {
+                    const settings = {
+                        exposure: {
+                            value: parseFloat(document.getElementById('exposure-slider').value)
+                        },
+                        image_quality: {
+                            brightness: parseFloat(document.getElementById('brightness-slider').value),
+                            gain: parseFloat(document.getElementById('gain-slider').value),
+                            contrast: parseFloat(document.getElementById('contrast-slider').value),
+                            saturation: parseFloat(document.getElementById('saturation-slider').value),
+                            sharpness: parseFloat(document.getElementById('sharpness-slider').value)
+                        },
+                        enhancement: {
+                            auto_enhance: document.getElementById('auto-enhance-toggle').checked,
+                            gamma_correction: parseFloat(document.getElementById('gamma-slider').value),
+                            clahe_enabled: document.getElementById('clahe-toggle').checked,
+                            clahe_clip_limit: parseFloat(document.getElementById('clahe-slider').value)
+                        }
+                    };
+                    
+                    const response = await fetch('/api/camera/settings', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(settings)
+                    });
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        this.pendingChanges = false;
+                        this.showMessage('Camera settings applied successfully', 'success');
+                    } else {
+                        this.showMessage(`Failed to apply settings: ${result.message}`, 'error');
+                    }
+                    
+                } catch (error) {
+                    console.error('Failed to apply settings:', error);
+                    this.showMessage('Failed to apply camera settings', 'error');
+                }
+            }
+            
+            async resetSettings() {
+                try {
+                    const response = await fetch('/api/camera/reset', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        this.currentPreset = 'outdoor_normal'; // Default preset
+                        this.updatePresetButtons();
+                        await this.loadCameraSettings();
+                        this.showMessage('Camera settings reset to defaults', 'success');
+                    } else {
+                        this.showMessage(`Failed to reset: ${result.message}`, 'error');
+                    }
+                    
+                } catch (error) {
+                    console.error('Failed to reset settings:', error);
+                    this.showMessage('Failed to reset camera settings', 'error');
+                }
+            }
+            
+            updatePresetButtons() {
+                const buttons = document.querySelectorAll('.preset-btn');
+                buttons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.preset === this.currentPreset) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+            
+            showMessage(message, type) {
+                // Create a temporary message element
+                const messageEl = document.createElement('div');
+                messageEl.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 12px 20px;
+                    border-radius: 5px;
+                    color: white;
+                    font-weight: bold;
+                    z-index: 1000;
+                    transition: opacity 0.3s ease;
+                    background: ${type === 'success' ? '#00ff88' : '#ff4444'};
+                    color: ${type === 'success' ? '#000' : '#fff'};
+                `;
+                messageEl.textContent = message;
+                
+                document.body.appendChild(messageEl);
+                
+                // Auto remove after 3 seconds
+                setTimeout(() => {
+                    messageEl.style.opacity = '0';
+                    setTimeout(() => {
+                        if (messageEl.parentNode) {
+                            messageEl.parentNode.removeChild(messageEl);
+                        }
+                    }, 300);
+                }, 3000);
             }
             
             startAutoRefresh() {
