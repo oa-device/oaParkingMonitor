@@ -1,34 +1,62 @@
-# MVP Configuration for oaParkingMonitor
-# Updated with real parking zone coordinates (1920x1080 resolution)
+# oaParkingMonitor Configuration - Clean Pydantic-based System
+# This configuration automatically maps to Python objects with validation
 
-# Core processing settings
-snapshot_interval: 5  # seconds between snapshots
-confidence_threshold: 0.5
-model_path: "models/yolo11m.pt"
+# AI Processing Configuration
+processing:
+  snapshot_interval: 5  # seconds between snapshots
+  confidence_threshold: 0.5
+  model_path: "models/yolo11m.pt"
+  processing_enabled: true
 
-# API settings
-api_port: 9091
-api_host: "0.0.0.0"
+# Camera Hardware Settings
+camera:
+  # Resolution and frame rate
+  width: 1920
+  height: 1080
+  fps: 30
+  
+  # Exposure and gain (optimized to fix overexposure)
+  exposure: 0.25  # Manual exposure (0-1, -1 for auto)
+  gain: 0.3       # Moderate gain
+  
+  # Image quality parameters
+  brightness: 0.4    # Slightly reduced
+  contrast: 0.6      # Increased for better definition
+  saturation: 0.5    # Normal
+  sharpness: 0.6     # Increased for clarity
+  white_balance: -1.0  # Auto white balance
+  
+  # Focus and initialization
+  autofocus: true
+  warmup_frames: 10
+  buffer_size: 1
+  mirror: false  # No camera flip
 
-# Video source settings
-video_source: ""  # Will default to staging video path, "0" for camera device
-camera_mirror: false  # No camera flip - coordinates mapped to normal capture
+# Image Enhancement Pipeline
+enhancement:
+  auto_enhance: true
+  gamma_correction: 0.8     # Darken overexposed image
+  histogram_equalization: false
+  clahe_enabled: true       # Enable CLAHE for better contrast
+  clahe_clip_limit: 3.0     # Higher for more contrast
+  clahe_tile_grid_size: 8
 
-# Camera settings for focus and initialization
-camera_warmup_frames: 10  # Number of frames to discard during camera warmup
-camera_autofocus: true  # Enable autofocus if supported
-camera_buffer_size: 1  # Camera buffer size to reduce latency
+# API Server Settings
+api:
+  port: 9091
+  host: "0.0.0.0"
 
-# Processing state
-processing_enabled: true
+# Video Input Source
+video:
+  source: ""  # Defaults to camera 0, or specify file path
 
-# Logging settings
+# System Configuration
 log_level: "INFO"
 debug: false
 
-# Updated 12 parking zones with real coordinates (1920x1080 resolution)
+# Parking Zone Definitions (1920x1080 resolution)
 parking_zones:
-  # A-series: Main visible row zones - easy to detect
+  # A-series: Front row zones - easy detection
   - id: 1
     space_id: 1
     name: "A1"
@@ -78,7 +106,7 @@ parking_zones:
     coordinates: [[1593, 315], [1777, 600], [1898, 588], [1899, 452], [1796, 296]]
     detection_difficulty: "easy"
   
-  # B-series: Back row zones - hard to detect at top edge (all aligned to y=0)
+  # B-series: Back row zones - hard detection at top edge
   - id: 8
     space_id: 8
     name: "B1"
