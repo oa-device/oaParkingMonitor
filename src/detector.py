@@ -10,7 +10,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 
 import cv2
 import numpy as np
@@ -748,19 +748,3 @@ class MVPParkingDetector:
         return 0.0
 
 
-# Alias for backward compatibility with main.py
-ParkingDetector = MVPParkingDetector
-
-
-# Legacy compatibility classes for existing API code
-class ParkingSpace:
-    """Legacy parking space for compatibility"""
-    def __init__(self, space_id: int, x: int, y: int, width: int, height: int, label: str = ""):
-        self.id = space_id
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.label = label
-        self.occupied = False
-        self.confidence = 0.0
