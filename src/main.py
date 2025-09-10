@@ -45,34 +45,76 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application with enhanced documentation
 app = FastAPI(
-    title="oaParkingMonitor - Modular Architecture",
+    title="oaParkingMonitor API",
     description="""
-    **Professional Parking Detection Service with Clean Architecture**
-    
-    ✨ **New Modular Design:**
-    - 🏗️ **Clean Architecture** - Proper separation of concerns with modular components
-    - 🔧 **Service Layer** - Dedicated business logic orchestration
-    - 🎛️ **Camera Controller** - Specialized camera settings management
-    - 📊 **API Models** - Centralized request/response validation
-    - 🔒 **Enhanced Configuration** - Pydantic-based with automatic validation
-    
-    **Key Features:**
-    - 📷 **Real-time parking detection** with YOLOv11m AI model
-    - 🎯 **Camera presets** optimized for different lighting conditions
-    - 📡 **Professional REST API** with comprehensive documentation
-    - 🔧 **Manual camera controls** for exposure, quality, and enhancement
-    - 📊 **Live dashboard** with real-time updates
-    
-    **Architecture Benefits:**
-    - **Maintainable**: Easy to locate and fix issues
-    - **Testable**: Services can be tested independently
-    - **Extensible**: Add features without touching core logic
-    - **Professional**: Industry-standard patterns and practices
+# Professional Parking Detection Service
+
+A production-ready parking space monitoring system powered by YOLOv11m AI model with clean modular architecture.
+
+## Core Features
+
+**Real-time Detection**
+- YOLOv11m AI model optimized for Mac M1 processors
+- Configurable confidence thresholds and detection zones
+- Support for both live camera feeds and video file processing
+
+**Camera Management** 
+- Advanced camera settings with exposure, gain, and quality controls
+- Preset configurations for different lighting conditions
+- Manual override capabilities for fine-tuning
+
+**Professional API**
+- RESTful endpoints with comprehensive validation
+- Real-time status monitoring and health checks
+- Structured JSON responses with proper error handling
+
+## Architecture
+
+**Modular Design**
+- Service Layer: Business logic orchestration and state management
+- Camera Controller: Specialized camera settings and preset management  
+- API Models: Centralized request/response validation with Pydantic
+- Configuration: YAML-based configuration with automatic validation
+
+**Quality Standards**
+- Clean Architecture principles with separation of concerns
+- Comprehensive error handling and logging
+- Industry-standard patterns and best practices
+- Full test coverage for independent service testing
+
+## Getting Started
+
+1. Check service health: `GET /health`
+2. View detection results: `GET /api/detection` 
+3. Configure camera settings: `POST /api/camera/settings`
+4. Access live dashboard: `GET /dashboard`
     """,
     version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    tags_metadata=[
+        {
+            "name": "Health",
+            "description": "Service health monitoring and system status endpoints."
+        },
+        {
+            "name": "Detection", 
+            "description": "Real-time parking detection and zone monitoring endpoints."
+        },
+        {
+            "name": "Camera",
+            "description": "Camera settings management, presets, and hardware control."
+        },
+        {
+            "name": "Configuration",
+            "description": "System configuration and operational parameters."
+        },
+        {
+            "name": "Dashboard",
+            "description": "Web interface and user-facing pages."
+        }
+    ]
 )
 
 # Setup templates
@@ -89,9 +131,13 @@ app.add_middleware(
 
 
 # Core API Endpoints
-@app.get("/health", response_model=HealthResponse)
+@app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
-    """Enhanced health check with service status"""
+    """Service health check with uptime and status information
+    
+    Returns comprehensive health information including service status,
+    version, uptime, and current timestamp for monitoring purposes.
+    """
     return HealthResponse(
         status="healthy" if parking_service.running else "stopped",
         service="parking-monitor-modular",
@@ -101,9 +147,13 @@ async def health_check():
     )
 
 
-@app.get("/api/detection", response_model=DetectionResponse)
+@app.get("/api/detection", response_model=DetectionResponse, tags=["Detection"])
 async def get_detection():
-    """Get current parking detection results with enhanced statistics"""
+    """Get real-time parking detection results
+    
+    Returns current parking space occupancy data including vehicle counts,
+    zone status, occupancy rates, and detection confidence scores.
+    """
     try:
         stats = await parking_service.get_detection_stats()
         
@@ -130,9 +180,13 @@ async def get_detection():
         )
 
 
-@app.get("/api/snapshot")
+@app.get("/api/snapshot", tags=["Detection"])
 async def get_snapshot():
-    """Get last processed snapshot image with detection overlays"""
+    """Get processed snapshot with detection overlays
+    
+    Returns the latest processed frame with vehicle detection bounding boxes
+    and zone overlays for visual verification of detection accuracy.
+    """
     image_bytes = parking_service.get_snapshot_image()
     if image_bytes is None:
         return JSONResponse(
@@ -152,9 +206,13 @@ async def get_snapshot():
     )
 
 
-@app.get("/api/raw-snapshot")
+@app.get("/api/raw-snapshot", tags=["Detection"])
 async def get_raw_snapshot():
-    """Get current raw frame without detection overlays"""
+    """Get raw camera frame without processing
+    
+    Returns the unprocessed camera frame for troubleshooting camera
+    settings, focus, and exposure without AI detection overlays.
+    """
     image_bytes = parking_service.get_raw_frame_image()
     if image_bytes is None:
         return JSONResponse(
@@ -174,7 +232,7 @@ async def get_raw_snapshot():
     )
 
 
-@app.get("/api/zones", response_model=ZonesResponse)
+@app.get("/api/zones", response_model=ZonesResponse, tags=["Detection"])
 async def get_zones():
     """Get parking zone definitions and current status"""
     try:
@@ -194,7 +252,7 @@ async def get_zones():
         )
 
 
-@app.get("/api/status", response_model=StatusResponse)
+@app.get("/api/status", response_model=StatusResponse, tags=["Health"])
 async def get_status():
     """Get comprehensive system status and timing information"""
     try:
@@ -211,9 +269,13 @@ async def get_status():
 
 
 # Camera Control API Endpoints (now using dedicated controller)
-@app.get("/api/camera/settings", response_model=CameraSettingsResponse)
+@app.get("/api/camera/settings", response_model=CameraSettingsResponse, tags=["Camera"])
 async def get_camera_settings():
-    """Get current camera settings using modular controller"""
+    """Get current camera configuration
+    
+    Returns comprehensive camera settings including resolution, exposure,
+    gain, image quality parameters, and device initialization status.
+    """
     try:
         camera_settings = camera_controller.get_current_settings()
         device_info = parking_service.get_device_info()
@@ -233,19 +295,23 @@ async def get_camera_settings():
         )
 
 
-@app.post("/api/camera/settings", response_model=CameraOperationResponse)
+@app.post("/api/camera/settings", response_model=CameraOperationResponse, tags=["Camera"])
 async def update_camera_settings(settings: CameraSettingsRequest):
-    """Update camera settings using dedicated controller with validation"""
+    """Update camera settings with validation
+    
+    Applies new camera settings with automatic validation and error handling.
+    Settings are applied immediately and persist across service restarts.
+    """
     return await camera_controller.update_settings(settings)
 
 
-@app.post("/api/camera/reset", response_model=CameraOperationResponse)
+@app.post("/api/camera/reset", response_model=CameraOperationResponse, tags=["Camera"])
 async def reset_camera_settings():
     """Reset camera settings to optimal defaults"""
     return await camera_controller.reset_to_defaults()
 
 
-@app.get("/api/camera/presets", response_model=CameraPresetsResponse)
+@app.get("/api/camera/presets", response_model=CameraPresetsResponse, tags=["Camera"])
 async def get_camera_presets():
     """Get available camera presets optimized for different conditions"""
     try:
@@ -265,13 +331,13 @@ async def get_camera_presets():
         )
 
 
-@app.post("/api/camera/presets/{preset_name}", response_model=CameraOperationResponse)
+@app.post("/api/camera/presets/{preset_name}", response_model=CameraOperationResponse, tags=["Camera"])
 async def apply_camera_preset(preset_name: str):
     """Apply a predefined camera preset"""
     return await camera_controller.apply_preset(preset_name)
 
 
-@app.get("/api/config", response_model=ConfigResponse)
+@app.get("/api/config", response_model=ConfigResponse, tags=["Configuration"])
 async def get_full_configuration():
     """Get complete system configuration"""
     try:
@@ -296,13 +362,17 @@ async def get_full_configuration():
 
 
 # Dashboard and Root Endpoints
-@app.get("/dashboard", response_class=HTMLResponse)
+@app.get("/dashboard", response_class=HTMLResponse, tags=["Dashboard"])
 async def dashboard(request: Request):
-    """Parking monitor dashboard with camera controls"""
+    """Interactive parking monitor dashboard
+    
+    Web interface providing real-time parking status, camera controls,
+    settings management, and live detection visualization.
+    """
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse, tags=["Dashboard"])
 async def root():
     """Root endpoint with service information"""
     return HTMLResponse(f"""
