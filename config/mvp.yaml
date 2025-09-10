@@ -78,38 +78,38 @@ parking_zones:
     coordinates: [[1593, 315], [1777, 600], [1898, 588], [1899, 452], [1796, 296]]
     detection_difficulty: "easy"
   
-  # B-series: Back row zones - hard to detect at top edge
+  # B-series: Back row zones - hard to detect at top edge (all aligned to y=0)
   - id: 8
     space_id: 8
     name: "B1"
     description: "Back left"
-    coordinates: [[12, 9], [5, 105], [193, 115], [217, 10]]
+    coordinates: [[12, 0], [5, 105], [193, 115], [217, 0]]
     detection_difficulty: "hard"
   
   - id: 9
     space_id: 9
     name: "B2"
     description: "Back center-left"
-    coordinates: [[217, 10], [193, 115], [391, 96], [399, 12]]
+    coordinates: [[217, 0], [193, 115], [391, 96], [399, 0]]
     detection_difficulty: "hard"
   
   - id: 10
     space_id: 10
     name: "B3"
     description: "Back center"
-    coordinates: [[399, 12], [391, 96], [583, 79], [573, 0]]
+    coordinates: [[399, 0], [391, 96], [583, 79], [573, 0]]
     detection_difficulty: "hard"
   
   - id: 11
     space_id: 11
     name: "B4"
     description: "Back right-center"
-    coordinates: [[573, 0], [583, 79], [779, 43], [776, 3]]
+    coordinates: [[573, 0], [583, 79], [779, 43], [776, 0]]
     detection_difficulty: "hard"
   
   - id: 12
     space_id: 12
     name: "B5"
     description: "Back right"
-    coordinates: [[776, 3], [779, 43], [922, 48], [914, 7]]
+    coordinates: [[776, 0], [779, 43], [922, 48], [914, 0]]
     detection_difficulty: "hard"
