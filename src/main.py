@@ -337,7 +337,7 @@ def validate_startup_environment():
     import sys
     
     # Check Python version
-    if sys.version_info < (3.8):
+    if sys.version_info < (3, 8):
         logging.error(f"Python 3.8+ required, got {sys.version_info}")
         return False
         
