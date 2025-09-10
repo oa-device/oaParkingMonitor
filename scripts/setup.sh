@@ -124,31 +124,21 @@ setup_configuration() {
     
     cd_project_root
     
-    # Copy configuration template
-    if [[ ! -f "config.yaml" ]]; then
-        if [[ -f "config/default.yaml" ]]; then
-            log_progress "Creating configuration file..."
-            
-            if cp config/default.yaml config.yaml; then
-                log_success "Configuration created at config.yaml"
-                log_info "Please edit config.yaml to match your environment"
-            else
-                log_error "Failed to create configuration file"
-                return 1
-            fi
+    # Check bundled configuration (config/mvp.yaml)
+    if [[ -f "config/mvp.yaml" ]]; then
+        log_success "Configuration file found: config/mvp.yaml"
+        
+        # Validate configuration syntax
+        if validate_yaml "config/mvp.yaml"; then
+            log_success "Configuration syntax valid"
         else
-            log_error "Default configuration template not found"
+            log_error "Configuration syntax validation failed"
             return 1
         fi
     else
-        log_success "Configuration file already exists"
-        
-        # Validate existing configuration
-        if validate_yaml "config.yaml"; then
-            log_success "Configuration syntax valid"
-        else
-            log_warn "Configuration syntax issues detected"
-        fi
+        log_error "Required configuration not found: config/mvp.yaml"
+        log_info "The application requires config/mvp.yaml to be present"
+        return 1
     fi
     
     # Show available environment configurations
@@ -192,7 +182,7 @@ show_setup_summary() {
     echo
     log_info "Next steps:"
     log_info "1. Configure your environment:"
-    log_info "   - Edit config.yaml for your camera and parking zones"
+    log_info "   - Configuration is in config/mvp.yaml (edit if needed)"
     log_info "   - Set PARKING_MONITOR_ENV environment variable if needed"
     log_info ""
     log_info "2. Validate deployment readiness:"

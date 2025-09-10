@@ -116,7 +116,7 @@ validate_configuration() {
         log_error "Configuration file not found: $CONFIG_FILE"
         log_info "Available configurations:"
         find config/ -name "*.yaml" -type f | sed 's/^/  /' || true
-        log_info "Run ./scripts/setup.sh first or copy config/default.yaml to $CONFIG_FILE"
+        log_info "Run ./scripts/setup.sh first - using bundled config/mvp.yaml"
         return 1
     fi
     

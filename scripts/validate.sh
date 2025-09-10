@@ -213,7 +213,7 @@ show_validation_summary() {
         log_info "Common fixes:"
         log_info "- Install dependencies: uv sync"
         log_info "- Make scripts executable: chmod +x scripts/*.sh"
-        log_info "- Create configuration: cp config/default.yaml config/$(get_environment).yaml"
+        log_info "- Configuration is bundled in config/mvp.yaml"
         log_info "- Run setup script: ./scripts/setup.sh"
         
         return 2
