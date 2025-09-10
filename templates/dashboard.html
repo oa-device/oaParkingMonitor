@@ -42,6 +42,8 @@
             padding: 15px 20px;
             border-radius: 10px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
         }
         
         .status-item {
@@ -252,6 +254,14 @@
                     <span class="status-label">Occupancy Rate</span>
                     <span class="status-value" id="occupancy-rate">0%</span>
                 </div>
+                <div class="status-item">
+                    <span class="status-label">Model</span>
+                    <span class="status-value" id="model-status">Loading</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Next Snapshot</span>
+                    <span class="status-value" id="next-snapshot">--</span>
+                </div>
             </div>
         </div>
         
@@ -296,6 +306,14 @@
                         <span>Snapshot Interval</span>
                         <span class="stat-value" id="snapshot-interval">5s</span>
                     </div>
+                    <div class="stat-item">
+                        <span>Device</span>
+                        <span class="stat-value" id="device-info">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Last Processing</span>
+                        <span class="stat-value" id="processing-time">--</span>
+                    </div>
                     <div class="last-update">
                         Last update: <span id="last-update">Never</span>
                     </div>
@@ -327,16 +345,25 @@
                 try {
                     this.setRefreshIndicator(true);
                     
-                    // Fetch detection data with epoch timestamps
-                    const response = await fetch('/api/detection');
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    // Fetch detection data and status in parallel
+                    const [detectionResponse, statusResponse] = await Promise.all([
+                        fetch('/api/detection'),
+                        fetch('/api/status')
+                    ]);
                     
-                    const data = await response.json();
+                    if (!detectionResponse.ok) throw new Error(`Detection API HTTP ${detectionResponse.status}`);
+                    if (!statusResponse.ok) throw new Error(`Status API HTTP ${statusResponse.status}`);
+                    
+                    const detectionData = await detectionResponse.json();
+                    const statusData = await statusResponse.json();
+                    
+                    // Combine data for comprehensive update
+                    const combinedData = { ...detectionData, ...statusData };
                     
                     // Only update if new data available
-                    if (data.last_update_epoch > this.lastUpdateEpoch) {
-                        await this.updateDashboard(data);
-                        this.lastUpdateEpoch = data.last_update_epoch;
+                    if (detectionData.last_update_epoch > this.lastUpdateEpoch) {
+                        await this.updateDashboard(combinedData);
+                        this.lastUpdateEpoch = detectionData.last_update_epoch;
                     }
                     
                     this.setRefreshIndicator(false);
@@ -433,18 +460,25 @@
                     const zoneCard = document.createElement('div');
                     zoneCard.className = 'zone-card';
                     
+                    // Determine zone difficulty from name (since API doesn't return detection_difficulty)
+                    const isHardZone = zone.name.startsWith('B'); // B-series are hard zones
+                    
                     if (zone.occupied) {
                         zoneCard.classList.add('occupied');
-                    } else if (zone.detection_difficulty === 'hard') {
+                    } else if (isHardZone) {
                         zoneCard.classList.add('hard');
                     } else {
                         zoneCard.classList.add('available');
                     }
                     
+                    // Show confidence for any zone that has been detected recently
+                    const showConfidence = zone.confidence > 0 || zone.last_detection;
+                    
                     zoneCard.innerHTML = `
                         <div class="zone-name">${zone.name}</div>
                         <div class="zone-status">${zone.occupied ? 'Occupied' : 'Available'}</div>
-                        ${zone.occupied ? `<div class="zone-confidence">${Math.round(zone.confidence * 100)}%</div>` : ''}
+                        ${showConfidence ? `<div class="zone-confidence">${Math.round(zone.confidence * 100)}%</div>` : ''}
+                        ${isHardZone ? `<div style="font-size: 0.6rem; color: #ffaa00;">Hard</div>` : ''}
                     `;
                     
                     container.appendChild(zoneCard);
@@ -460,6 +494,28 @@
                     data.easy_zones_count || 0;
                 document.getElementById('hard-zones').textContent = 
                     data.hard_zones_count || 0;
+                
+                // Update model status
+                const modelStatus = data.model_loaded ? 'Loaded' : 'Loading';
+                document.getElementById('model-status').textContent = modelStatus;
+                document.getElementById('model-status').className = 
+                    data.model_loaded ? 'status-value status-healthy' : 'status-value status-warning';
+                
+                // Update device info
+                document.getElementById('device-info').textContent = data.device || '--';
+                
+                // Update processing time if available
+                if (data.last_processing_time) {
+                    document.getElementById('processing-time').textContent = 
+                        (data.last_processing_time * 1000).toFixed(0) + 'ms';
+                }
+                
+                // Update next snapshot countdown
+                if (data.next_snapshot_in !== undefined) {
+                    const nextIn = Math.max(0, data.next_snapshot_in);
+                    document.getElementById('next-snapshot').textContent = 
+                        nextIn > 0 ? nextIn.toFixed(1) + 's' : 'Now';
+                }
             }
             
             setServiceStatus(status) {
