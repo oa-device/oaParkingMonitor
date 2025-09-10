@@ -31,7 +31,7 @@ class ParkingMonitorService:
         self.config = self.config_manager.config
         
         # Initialize detector with clean configuration
-        self.detector = MVPParkingDetector(self.config)
+        self.detector = MVPParkingDetector()
         self.running = False
         self.start_time = datetime.now()
         
