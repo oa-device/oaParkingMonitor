@@ -1,5 +1,5 @@
 """
-MVP Snapshot-Based Parking Detector
+MVP Snapshot-Based Parking Detector (Updated for Modular Config)
 Simplified detection engine that processes one frame every 5 seconds
 """
 
@@ -15,7 +15,7 @@ from typing import List, Dict, Any, Optional
 import cv2
 import numpy as np
 
-from .config import MVPConfigManager, MVPConfig, ParkingZone
+from .config import ConfigManager as MVPConfigManager, ParkingConfig as MVPConfig, ParkingZone
 
 
 @dataclass
@@ -41,23 +41,23 @@ class SnapshotResult:
 
 
 class MVPParkingDetector:
-    """Simplified MVP parking detector with snapshot processing"""
+    """Simplified MVP parking detector with snapshot processing (Updated for modular config)"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.running = False
         
-        # Load MVP configuration
+        # Load configuration using new system
         self.config_manager = MVPConfigManager()
         self.config = self.config_manager.config
         
         # Video source setup - handle both camera devices and file paths
-        video_source_str = str(self.config.video_source)
+        video_source_str = str(self.config.video.source)
         if video_source_str.isdigit():
-            self.video_source = self.config.video_source  # Keep as string for camera device
+            self.video_source = self.config.video.source  # Keep as string for camera device
         else:
-            self.video_source = Path(self.config.video_source)  # Convert to Path for file
-        self.model_path = Path.home() / "orangead" / "parking-monitor" / self.config.model_path
+            self.video_source = Path(self.config.video.source)  # Convert to Path for file
+        self.model_path = Path.home() / "orangead" / "parking-monitor" / self.config.processing.model_path
         
         # Device detection
         self.device = self._detect_optimal_device()
@@ -98,7 +98,7 @@ class MVPParkingDetector:
         # Initialize logging
         self.logger.info(f"MVP Detector initialized with device: {self.device}")
         self.logger.info(f"Video source: {self.video_source}")
-        self.logger.info(f"Snapshot interval: {self.config.snapshot_interval} seconds")
+        self.logger.info(f"Snapshot interval: {self.config.processing.snapshot_interval} seconds")
     
     def _is_apple_silicon(self) -> bool:
         """Check if running on Apple Silicon"""
@@ -125,10 +125,96 @@ class MVPParkingDetector:
         except Exception as e:
             self.logger.warning(f"Device detection failed: {e}, using CPU")
             return "cpu"
-
+    
+    def _convert_to_camera_exposure(self, exposure: float) -> float:
+        """Convert 0-1 exposure value to camera-specific range"""
+        # Most cameras use negative values for exposure (e.g., -13 to -1)
+        # Convert 0-1 to -13 to -1 range for manual exposure
+        return -13.0 + (exposure * 12.0)
+    
+    def _convert_to_camera_gain(self, gain: float) -> float:
+        """Convert 0-1 gain value to camera-specific range"""
+        # Most cameras use 0-100 range for gain
+        return gain * 100.0
+    
+    def _convert_to_camera_brightness(self, brightness: float) -> float:
+        """Convert 0-1 brightness value to camera-specific range"""
+        # Most cameras use -100 to 100 range for brightness
+        return (brightness - 0.5) * 200.0
+    
+    def _convert_to_camera_contrast(self, contrast: float) -> float:
+        """Convert 0-1 contrast value to camera-specific range"""
+        # Most cameras use 0-100 range for contrast
+        return contrast * 100.0
+    
+    def _convert_to_camera_saturation(self, saturation: float) -> float:
+        """Convert 0-1 saturation value to camera-specific range"""
+        # Most cameras use 0-100 range for saturation
+        return saturation * 100.0
+    
+    def _convert_to_camera_sharpness(self, sharpness: float) -> float:
+        """Convert 0-1 sharpness value to camera-specific range"""
+        # Most cameras use 0-100 range for sharpness
+        return sharpness * 100.0
+    
+    def _convert_to_camera_white_balance(self, wb: float) -> float:
+        """Convert 0-1 white balance value to camera-specific range"""
+        # Most cameras use 2000-7000K range for white balance
+        return 2000 + (wb * 5000)
+    
+    def _enhance_frame(self, frame: np.ndarray) -> np.ndarray:
+        """Apply image enhancement to improve quality"""
+        if not self.config.enhancement.auto_enhance:
+            return frame
+        
+        enhanced_frame = frame.copy()
+        
+        try:
+            # Apply gamma correction to fix overexposure
+            if self.config.enhancement.gamma_correction != 1.0:
+                # Build lookup table for gamma correction
+                gamma = self.config.enhancement.gamma_correction
+                inv_gamma = 1.0 / gamma
+                table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(256)]).astype("uint8")
+                enhanced_frame = cv2.LUT(enhanced_frame, table)
+                self.logger.debug(f"Applied gamma correction: {gamma}")
+            
+            # Apply histogram equalization if enabled
+            if self.config.enhancement.histogram_equalization:
+                # Convert to LAB color space for better histogram equalization
+                lab = cv2.cvtColor(enhanced_frame, cv2.COLOR_BGR2LAB)
+                l, a, b = cv2.split(lab)
+                # Apply histogram equalization to lightness channel
+                l = cv2.equalizeHist(l)
+                enhanced_frame = cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
+                self.logger.debug("Applied histogram equalization")
+            
+            # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+            if self.config.enhancement.clahe_enabled:
+                # Convert to LAB color space
+                lab = cv2.cvtColor(enhanced_frame, cv2.COLOR_BGR2LAB)
+                l, a, b = cv2.split(lab)
+                
+                # Create CLAHE object
+                clahe = cv2.createCLAHE(
+                    clipLimit=self.config.enhancement.clahe_clip_limit,
+                    tileGridSize=(self.config.enhancement.clahe_tile_grid_size, 
+                                self.config.enhancement.clahe_tile_grid_size)
+                )
+                
+                # Apply CLAHE to lightness channel
+                l = clahe.apply(l)
+                enhanced_frame = cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
+                self.logger.debug(f"Applied CLAHE with clip limit {self.config.enhancement.clahe_clip_limit}")
+            
+        except Exception as e:
+            self.logger.error(f"Image enhancement failed: {e}")
+            return frame
+        
+        return enhanced_frame
     
     async def _initialize_camera(self):
-        """Initialize camera with warm-up and autofocus settings"""
+        """Initialize camera with enhanced controls and image quality settings"""
         if self.camera_initialized or not self.is_camera_device:
             return
         
@@ -142,42 +228,92 @@ class MVPParkingDetector:
                 self.logger.error(f"Cannot open camera device: {video_input}")
                 raise RuntimeError(f"Camera device {video_input} not accessible")
             
-            # Set camera properties for better performance and focus
+            # Set enhanced camera properties for better image quality
             try:
-                # Enable autofocus if supported and configured
-                if self.config.camera_autofocus:
+                # Resolution settings
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.config.camera.width)
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.camera.height)
+                self.cap.set(cv2.CAP_PROP_FPS, self.config.camera.fps)
+                self.logger.debug(f"Set resolution: {self.config.camera.width}x{self.config.camera.height} @ {self.config.camera.fps}fps")
+                
+                # Buffer size to reduce latency
+                self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self.config.camera.buffer_size)
+                self.logger.debug(f"Set camera buffer size to {self.config.camera.buffer_size}")
+                
+                # Focus settings
+                if self.config.camera.autofocus:
                     self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
                     self.logger.debug("Enabled camera autofocus")
+                else:
+                    self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+                    self.logger.debug("Disabled camera autofocus")
                 
-                # Set buffer size to reduce latency
-                self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self.config.camera_buffer_size)
-                self.logger.debug(f"Set camera buffer size to {self.config.camera_buffer_size}")
+                # Exposure control - critical for fixing overexposure
+                if self.config.camera.exposure >= 0:
+                    # Manual exposure mode
+                    self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)  # Manual mode
+                    # Convert 0-1 range to camera-specific range
+                    exposure_value = self._convert_to_camera_exposure(self.config.camera.exposure)
+                    self.cap.set(cv2.CAP_PROP_EXPOSURE, exposure_value)
+                    self.logger.info(f"Set manual exposure: {self.config.camera.exposure} -> {exposure_value}")
+                else:
+                    # Auto exposure mode
+                    self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
+                    self.logger.debug("Enabled auto exposure")
                 
-                # Enable auto exposure if supported
-                self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)  # Auto mode
-                self.logger.debug("Enabled auto exposure")
+                # Gain control
+                if self.config.camera.gain >= 0:
+                    gain_value = self._convert_to_camera_gain(self.config.camera.gain)
+                    self.cap.set(cv2.CAP_PROP_GAIN, gain_value)
+                    self.logger.debug(f"Set manual gain: {self.config.camera.gain} -> {gain_value}")
                 
-                # Set reasonable resolution and FPS for consistency
-                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-                self.cap.set(cv2.CAP_PROP_FPS, 30)
+                # Image quality settings
+                if hasattr(cv2, 'CAP_PROP_BRIGHTNESS'):
+                    brightness_value = self._convert_to_camera_brightness(self.config.camera.brightness)
+                    self.cap.set(cv2.CAP_PROP_BRIGHTNESS, brightness_value)
+                    self.logger.debug(f"Set brightness: {self.config.camera.brightness} -> {brightness_value}")
+                
+                if hasattr(cv2, 'CAP_PROP_CONTRAST'):
+                    contrast_value = self._convert_to_camera_contrast(self.config.camera.contrast)
+                    self.cap.set(cv2.CAP_PROP_CONTRAST, contrast_value)
+                    self.logger.debug(f"Set contrast: {self.config.camera.contrast} -> {contrast_value}")
+                
+                if hasattr(cv2, 'CAP_PROP_SATURATION'):
+                    saturation_value = self._convert_to_camera_saturation(self.config.camera.saturation)
+                    self.cap.set(cv2.CAP_PROP_SATURATION, saturation_value)
+                    self.logger.debug(f"Set saturation: {self.config.camera.saturation} -> {saturation_value}")
+                
+                if hasattr(cv2, 'CAP_PROP_SHARPNESS'):
+                    sharpness_value = self._convert_to_camera_sharpness(self.config.camera.sharpness)
+                    self.cap.set(cv2.CAP_PROP_SHARPNESS, sharpness_value)
+                    self.logger.debug(f"Set sharpness: {self.config.camera.sharpness} -> {sharpness_value}")
+                
+                # White balance
+                if self.config.camera.white_balance >= 0:
+                    self.cap.set(cv2.CAP_PROP_AUTO_WB, 0)  # Manual white balance
+                    wb_value = self._convert_to_camera_white_balance(self.config.camera.white_balance)
+                    self.cap.set(cv2.CAP_PROP_WB_TEMPERATURE, wb_value)
+                    self.logger.debug(f"Set manual white balance: {self.config.camera.white_balance}")
+                else:
+                    self.cap.set(cv2.CAP_PROP_AUTO_WB, 1)  # Auto white balance
+                    self.logger.debug("Enabled auto white balance")
                 
             except Exception as prop_error:
                 self.logger.warning(f"Could not set all camera properties: {prop_error}")
             
             # Perform camera warm-up routine
-            self.logger.info(f"Starting camera warm-up with {self.config.camera_warmup_frames} frames...")
+            self.logger.info(f"Starting camera warm-up with {self.config.camera.warmup_frames} frames...")
             
-            for i in range(self.config.camera_warmup_frames):
+            for i in range(self.config.camera.warmup_frames):
                 ret, frame = self.cap.read()
                 if not ret:
-                    self.logger.warning(f"Failed to read warm-up frame {i+1}/{self.config.camera_warmup_frames}")
+                    self.logger.warning(f"Failed to read warm-up frame {i+1}/{self.config.camera.warmup_frames}")
                     continue
                 
                 # Small delay between frames to allow camera adjustment
                 await asyncio.sleep(0.1)
                 
-                self.logger.debug(f"Warm-up frame {i+1}/{self.config.camera_warmup_frames} captured")
+                self.logger.debug(f"Warm-up frame {i+1}/{self.config.camera.warmup_frames} captured")
             
             self.camera_initialized = True
             self.logger.info("Camera initialization and warm-up completed successfully")
@@ -299,9 +435,16 @@ class MVPParkingDetector:
                     return None
             
             # Apply camera mirroring if enabled and using a camera device
-            if self.config.camera_mirror and self.is_camera_device:
+            if self.config.camera.mirror and self.is_camera_device:
                 frame = cv2.flip(frame, 1)  # Horizontal flip
                 self.logger.debug("Applied camera mirror (horizontal flip)")
+            
+            # Apply image enhancement for better quality
+            if self.is_camera_device:
+                frame = self._enhance_frame(frame)
+            
+            # Store current frame for raw access
+            self.current_frame = frame.copy()
             
             return frame
             
@@ -322,9 +465,9 @@ class MVPParkingDetector:
                 raise RuntimeError(f"Cannot reopen camera device: {video_input}")
             
             # Reapply camera settings
-            if self.config.camera_autofocus:
+            if self.config.camera.autofocus:
                 self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
-            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self.config.camera_buffer_size)
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self.config.camera.buffer_size)
             self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
             
             self.logger.info("Camera reconnected successfully")
@@ -342,7 +485,7 @@ class MVPParkingDetector:
                 return []
             
             # Run inference
-            results = self.model(frame, conf=self.config.confidence_threshold, verbose=False)
+            results = self.model(frame, conf=self.config.processing.confidence_threshold, verbose=False)
             
             detections = []
             for result in results:
@@ -406,10 +549,10 @@ class MVPParkingDetector:
                         
                         # Apply detection difficulty adjustment
                         adjusted_confidence = self._adjust_confidence_by_difficulty(
-                            detection.confidence, zone.detection_difficulty
+                            detection.confidence, zone.detection_difficulty.value
                         )
                         
-                        if adjusted_confidence >= self.config.confidence_threshold:
+                        if adjusted_confidence >= self.config.processing.confidence_threshold:
                             occupied = True
                             best_confidence = max(best_confidence, adjusted_confidence)
             
@@ -424,7 +567,7 @@ class MVPParkingDetector:
                 "occupied": occupied,
                 "confidence": best_confidence,
                 "coordinates": zone.coordinates,
-                "detection_difficulty": zone.detection_difficulty,
+                "detection_difficulty": zone.detection_difficulty.value,
                 "detection_count": zone_detection_count
             })
         
@@ -589,7 +732,7 @@ class MVPParkingDetector:
         self.stats["occupancy_rate"] = occupied_count / len(zones_status) if zones_status else 0.0
         
         # Simple FPS calculation (inverse of snapshot interval)
-        self.stats["processing_fps"] = 1.0 / self.config.snapshot_interval
+        self.stats["processing_fps"] = 1.0 / self.config.processing.snapshot_interval
     
     async def start_snapshot_loop(self):
         """Start the snapshot processing loop"""
@@ -668,18 +811,17 @@ class MVPParkingDetector:
     
     async def get_stats(self) -> Dict[str, Any]:
         """Get current detection statistics"""
-        # Add config data to stats
-        occupancy_summary = self.config.get_occupancy_summary()
-        
+        # Use new config system methods
         return {
             **self.stats,
-            "snapshot_interval": self.config.snapshot_interval,
+            "snapshot_interval": self.config.processing.snapshot_interval,
             "last_snapshot_epoch": self.config.last_snapshot_epoch,
-            "total_zones": occupancy_summary["total_zones"],
-            "occupied_zones": occupancy_summary["occupied_zones"],
-            "available_zones": occupancy_summary["available_zones"],
-            "occupancy_rate": occupancy_summary["occupancy_rate"],
-            "last_update_epoch": occupancy_summary["last_update"]
+            "total_zones": self.config.get_total_zones(),
+            "occupied_zones": sum(1 for zone in self.config.parking_zones if zone.occupied),
+            "available_zones": sum(1 for zone in self.config.parking_zones if not zone.occupied),
+            "occupancy_rate": (sum(1 for zone in self.config.parking_zones if zone.occupied) / 
+                             max(1, self.config.get_total_zones())),
+            "last_update_epoch": self.config.last_snapshot_epoch
         }
     
     async def get_parking_spaces(self) -> Dict[str, Any]:
@@ -715,7 +857,7 @@ class MVPParkingDetector:
         return {
             "device_info": self.stats["device_info"],
             "processing": {
-                "snapshot_interval": self.config.snapshot_interval,
+                "snapshot_interval": self.config.processing.snapshot_interval,
                 "last_processing_time": self.last_snapshot.processing_time if self.last_snapshot else 0.0,
                 "model_loaded": self.stats["model_loaded"]
             },
@@ -746,5 +888,3 @@ class MVPParkingDetector:
         except:
             pass
         return 0.0
-
-
