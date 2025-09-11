@@ -1,0 +1,50 @@
+# Camera Presets Configuration
+# Optimized for outdoor airport parking environment
+
+outdoor_bright:
+  name: "Bright Daylight"
+  description: "Optimized for bright outdoor airport parking"
+  settings:
+    exposure:
+      value: 0.2
+    image_quality:
+      brightness: 0.3
+      contrast: 0.7
+      saturation: 0.6
+      gain: 0.2
+    enhancement:
+      gamma_correction: 0.7
+      clahe_enabled: true
+      clahe_clip_limit: 2.5
+
+outdoor_normal:
+  name: "Normal Daylight" 
+  description: "Balanced settings for typical outdoor conditions"
+  settings:
+    exposure:
+      value: 0.25
+    image_quality:
+      brightness: 0.4
+      contrast: 0.6
+      saturation: 0.5
+      gain: 0.3
+    enhancement:
+      gamma_correction: 0.8
+      clahe_enabled: true
+      clahe_clip_limit: 3.0
+
+outdoor_overcast:
+  name: "Overcast/Cloudy"
+  description: "Enhanced for cloudy outdoor conditions"
+  settings:
+    exposure:
+      value: 0.35
+    image_quality:
+      brightness: 0.5
+      contrast: 0.8
+      saturation: 0.4
+      gain: 0.4
+    enhancement:
+      gamma_correction: 1.0
+      clahe_enabled: true
+      clahe_clip_limit: 3.5
