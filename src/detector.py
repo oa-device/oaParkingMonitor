@@ -228,10 +228,17 @@ class MVPParkingDetector:
                 enhance_edge_zones=True
             )
             
+            # Create zone difficulty mapping for adaptive confidence
+            zone_difficulty_map = {
+                zone.id: zone.detection_difficulty 
+                for zone in self.config.parking_zones
+            }
+            
             # Run vehicle detection with modular detector
             detections_data = self.vehicle_detector.detect_vehicles(
                 processed_frame,
-                base_confidence=self.config.processing.confidence_threshold
+                base_confidence=self.config.processing.confidence_threshold,
+                zone_difficulty_map=zone_difficulty_map
             )
             
             # Convert to legacy VehicleDetection format for compatibility

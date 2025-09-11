@@ -186,8 +186,8 @@ class ZoneAnalyzer:
         # Calculate overlap ratio
         overlap_ratio = inside_count / len(test_points)
         
-        # Consider detection valid if significant overlap (>20% for hard zones, >30% for easy)
-        threshold = 0.2 if detection.get("zone_difficulty") == DetectionDifficulty.HARD else 0.3
+        # Consider detection valid if significant overlap (>10% for hard zones, >30% for easy)
+        threshold = 0.1 if detection.get("zone_difficulty") == DetectionDifficulty.HARD else 0.3
         inside = overlap_ratio >= threshold
         
         return inside, overlap_ratio
@@ -217,7 +217,7 @@ class ZoneAnalyzer:
             
             # For hard/edge zones, accept lower IoU threshold
             difficulty = DetectionDifficulty(zone.get("detection_difficulty", "easy"))
-            threshold = 0.15 if difficulty == DetectionDifficulty.HARD else 0.25
+            threshold = 0.05 if difficulty == DetectionDifficulty.HARD else 0.25
             
             inside = iou >= threshold
             return inside, iou
@@ -259,8 +259,8 @@ class ZoneAnalyzer:
         
         # Aggressive confidence boosting for hard zones (B-section)
         if difficulty == DetectionDifficulty.HARD:
-            # Much more aggressive boost: 2.5x confidence + overlap bonus
-            confidence_multiplier = 2.5 + (overlap_score * 1.5)  
+            # Much more aggressive boost: 3.0x confidence + overlap bonus
+            confidence_multiplier = 4.0 + (overlap_score * 2.0)  
             adjusted_confidence = min(1.0, original_conf * confidence_multiplier)
             self.stats["confidence_adjustments"] += 1
         else:
@@ -283,7 +283,7 @@ class ZoneAnalyzer:
         # For hard zones (B-section), use very aggressive thresholds
         if difficulty == DetectionDifficulty.HARD:
             # Accept any detection with reasonable confidence
-            min_confidence = 0.3  # Very low threshold for hard zones
+            min_confidence = 0.05  # Extremely low threshold for hard zones
             strong_detections = [d for d in detections if d["confidence"] >= min_confidence]
             return len(strong_detections) > 0
         else:

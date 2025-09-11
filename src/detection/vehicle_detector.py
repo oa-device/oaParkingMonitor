@@ -78,8 +78,17 @@ class VehicleDetector:
             import time
             start_time = time.time()
             
-            # Run inference with base confidence
-            results = self.model(frame, conf=base_confidence, verbose=False)
+            # Adaptive confidence adjustment for hard zones
+            adjusted_confidence = base_confidence
+            if zone_difficulty_map:
+                has_hard_zones = any(diff == DetectionDifficulty.HARD for diff in zone_difficulty_map.values())
+                if has_hard_zones:
+                    # Reduce confidence threshold when hard zones are present
+                    adjusted_confidence = min(0.2, base_confidence)
+                    self.logger.debug(f"Reduced confidence for hard zones: {base_confidence} -> {adjusted_confidence}")
+            
+            # Run inference with adjusted confidence
+            results = self.model(frame, conf=adjusted_confidence, verbose=False)
             
             inference_time = time.time() - start_time
             self.stats["last_inference_time"] = inference_time
