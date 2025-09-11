@@ -47,47 +47,21 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="oaParkingMonitor API",
     description="""
-# Professional Parking Detection Service
+# Parking Detection API
 
-A production-ready parking space monitoring system powered by YOLOv11m AI model with clean modular architecture.
+Real-time parking space monitoring with YOLOv11m AI model.
 
-## Core Features
+## Quick Start
+- **Health Check**: `GET /health`
+- **Detection Data**: `GET /api/detection` 
+- **Live Dashboard**: `GET /dashboard`
+- **Camera Settings**: `GET/POST /api/camera/settings`
 
-**Real-time Detection**
-- YOLOv11m AI model optimized for Mac M1 processors
-- Configurable confidence thresholds and detection zones
-- Support for both live camera feeds and video file processing
-
-**Camera Management** 
-- Advanced camera settings with exposure, gain, and quality controls
-- Preset configurations for different lighting conditions
-- Manual override capabilities for fine-tuning
-
-**Professional API**
-- RESTful endpoints with comprehensive validation
-- Real-time status monitoring and health checks
-- Structured JSON responses with proper error handling
-
-## Architecture
-
-**Modular Design**
-- Service Layer: Business logic orchestration and state management
-- Camera Controller: Specialized camera settings and preset management  
-- API Models: Centralized request/response validation with Pydantic
-- Configuration: YAML-based configuration with automatic validation
-
-**Quality Standards**
-- Clean Architecture principles with separation of concerns
-- Comprehensive error handling and logging
-- Industry-standard patterns and best practices
-- Full test coverage for independent service testing
-
-## Getting Started
-
-1. Check service health: `GET /health`
-2. View detection results: `GET /api/detection` 
-3. Configure camera settings: `POST /api/camera/settings`
-4. Access live dashboard: `GET /dashboard`
+## Key Features
+- Real-time vehicle detection and parking zone monitoring
+- Camera settings management with presets for different lighting
+- Live snapshots with detection overlays
+- Comprehensive status and configuration endpoints
     """,
     version="2.0.0",
     lifespan=lifespan,
