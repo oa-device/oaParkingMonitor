@@ -15,7 +15,8 @@ from typing import List, Dict, Any, Optional
 import cv2
 import numpy as np
 
-from .config import ConfigManager as MVPConfigManager, ParkingConfig as MVPConfig, ParkingZone
+from .config import ConfigManager as MVPConfigManager, ParkingConfig as MVPConfig
+from .config.models import ParkingZone
 
 
 @dataclass
