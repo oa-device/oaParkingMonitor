@@ -5,6 +5,7 @@ Ensures documentation always stays in sync with code
 """
 
 import json
+import logging
 import yaml
 from typing import Any, Dict, Type, get_origin, get_args
 from pathlib import Path
@@ -224,7 +225,8 @@ def generate_schemas():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     files = generate_schemas()
-    print("Generated documentation files:")
+    logging.info("Generated documentation files:")
     for name, path in files.items():
-        print(f"  {name}: {path}")
+        logging.info(f"  {name}: {path}")
