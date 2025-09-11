@@ -92,6 +92,3 @@ class ConfigManager:
         return "mvp"
 
 
-# Backward compatibility aliases
-MVPConfigManager = ConfigManager
-MVPConfig = ParkingConfig
