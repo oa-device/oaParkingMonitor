@@ -8,7 +8,7 @@ from pathlib import Path
 import time
 from pydantic import BaseModel, Field, field_validator
 
-from ..config.enums import DetectionDifficulty, LogLevel
+from .enums import DetectionDifficulty, LogLevel
 
 
 # Core Camera Settings Models

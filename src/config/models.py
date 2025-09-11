@@ -8,7 +8,7 @@ from pathlib import Path
 import time
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from .enums import DetectionDifficulty, LogLevel
+from ..models.enums import DetectionDifficulty, LogLevel
 
 # Import shared models
 from ..models.shared import (

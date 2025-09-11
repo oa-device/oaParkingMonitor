@@ -26,7 +26,7 @@ from .models import (
 
 from .manager import ConfigManager
 
-from .enums import DetectionDifficulty, LogLevel
+from ..models.enums import DetectionDifficulty, LogLevel
 
 from .validation import ConfigLoader, ConfigSaver, ConfigValidator
 

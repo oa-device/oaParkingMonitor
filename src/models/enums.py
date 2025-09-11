@@ -1,6 +1,6 @@
 """
-Configuration Enumerations
-Common enum types used throughout the parking monitor configuration system
+Model Enumerations
+Common enum types used throughout the parking monitor system
 """
 
 from enum import Enum
