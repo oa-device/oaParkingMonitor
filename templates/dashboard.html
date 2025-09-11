@@ -459,7 +459,7 @@
                 </div>
                 <div class="status-item">
                     <span class="status-label">Next Snapshot</span>
-                    <span class="status-value" id="next-snapshot">--</span>
+                    <span class="status-value" id="next-snapshot" style="font-weight: bold;">--</span>
                 </div>
             </div>
         </div>
@@ -480,9 +480,9 @@
                 <!-- Camera Controls Panel -->
                 <div class="camera-controls-panel">
                     <div class="panel-header">
-                        <span>Camera Controls</span>
+                        <span>Camera Controls <small style="color: #888;">(Auto-Adjustment Enabled)</small></span>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="camera-controls-toggle" checked>
+                            <input type="checkbox" id="camera-controls-toggle">
                             <span class="slider"></span>
                         </label>
                     </div>
@@ -641,6 +641,8 @@
                 this.lastUpdateEpoch = 0;
                 this.currentPreset = 'custom';
                 this.pendingChanges = false;
+                this.nextSnapshotTime = 0;
+                this.snapshotInterval = 5;
                 this.init();
             }
             
@@ -648,6 +650,7 @@
                 this.setupCameraControls();
                 this.loadCameraSettings();
                 this.startAutoRefresh();
+                this.startCountdownTimer();
                 this.fetchData(); // Initial load
             }
             
@@ -655,6 +658,9 @@
                 // Toggle camera controls panel
                 const toggle = document.getElementById('camera-controls-toggle');
                 const content = document.getElementById('camera-controls-content');
+                
+                // Camera controls collapsed by default since auto-adjustment is enabled
+                content.style.display = 'none';
                 
                 toggle.addEventListener('change', (e) => {
                     content.style.display = e.target.checked ? 'block' : 'none';
@@ -898,6 +904,32 @@
                 }, this.refreshInterval);
             }
             
+            startCountdownTimer() {
+                // Update countdown every second for smooth UX
+                setInterval(() => {
+                    this.updateCountdownDisplay();
+                }, 1000);
+            }
+            
+            updateCountdownDisplay() {
+                const now = Date.now() / 1000;
+                const timeUntilNext = Math.max(0, this.nextSnapshotTime - now);
+                
+                const countdownElement = document.getElementById('next-snapshot');
+                if (timeUntilNext > 0) {
+                    if (timeUntilNext > 1) {
+                        countdownElement.textContent = timeUntilNext.toFixed(1) + 's';
+                        countdownElement.style.color = '#fff';
+                    } else {
+                        countdownElement.textContent = 'Processing...';
+                        countdownElement.style.color = '#00ff88';
+                    }
+                } else {
+                    countdownElement.textContent = 'Ready';
+                    countdownElement.style.color = '#ffaa00';
+                }
+            }
+            
             async fetchData() {
                 try {
                     this.setRefreshIndicator(true);
@@ -1067,11 +1099,11 @@
                         (data.last_processing_time * 1000).toFixed(0) + 'ms';
                 }
                 
-                // Update next snapshot countdown
+                // Update next snapshot countdown with real-time tracking
                 if (data.next_snapshot_in !== undefined) {
-                    const nextIn = Math.max(0, data.next_snapshot_in);
-                    document.getElementById('next-snapshot').textContent = 
-                        nextIn > 0 ? nextIn.toFixed(1) + 's' : 'Now';
+                    const serverTime = data.server_time_epoch || (Date.now() / 1000);
+                    this.nextSnapshotTime = serverTime + Math.max(0, data.next_snapshot_in);
+                    this.snapshotInterval = data.snapshot_interval || 5;
                 }
             }
             
