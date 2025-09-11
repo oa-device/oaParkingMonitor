@@ -10,6 +10,15 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .enums import DetectionDifficulty, LogLevel
 
+# Import shared models
+from ..models.shared import (
+    CameraSettings,
+    ImageEnhancement,
+    ProcessingSettings,
+    APISettings,
+    VideoSource,
+)
+
 
 class ParkingZone(BaseModel):
     """Pydantic model for parking zone configuration with validation"""
@@ -53,91 +62,7 @@ class ParkingZone(BaseModel):
         return v
 
 
-class CameraSettings(BaseModel):
-    """Camera hardware configuration with validation"""
-    
-    # Resolution and frame rate
-    width: int = Field(1920, ge=640, le=3840, description="Camera resolution width")
-    height: int = Field(1080, ge=480, le=2160, description="Camera resolution height") 
-    fps: int = Field(30, ge=1, le=60, description="Camera frame rate")
-    
-    # Exposure and gain
-    exposure: float = Field(0.25, ge=-1.0, le=1.0, description="Manual exposure (-1 for auto)")
-    gain: float = Field(0.3, ge=-1.0, le=1.0, description="Camera gain (-1 for auto)")
-    
-    # Image quality parameters
-    brightness: float = Field(0.4, ge=0.0, le=1.0, description="Camera brightness")
-    contrast: float = Field(0.6, ge=0.0, le=1.0, description="Camera contrast")
-    saturation: float = Field(0.5, ge=0.0, le=1.0, description="Camera saturation")
-    sharpness: float = Field(0.6, ge=0.0, le=1.0, description="Camera sharpness")
-    white_balance: float = Field(-1.0, ge=-1.0, le=1.0, description="White balance (-1 for auto)")
-    
-    # Focus and initialization
-    autofocus: bool = Field(True, description="Enable autofocus if supported")
-    warmup_frames: int = Field(10, ge=1, le=50, description="Warmup frames to discard")
-    buffer_size: int = Field(1, ge=1, le=10, description="Camera buffer size")
-    mirror: bool = Field(False, description="Mirror camera image horizontally")
-
-
-class ImageEnhancement(BaseModel):
-    """Image processing and enhancement configuration"""
-    
-    auto_enhance: bool = Field(True, description="Enable automatic image enhancement")
-    gamma_correction: float = Field(0.8, ge=0.5, le=2.0, description="Gamma correction factor")
-    histogram_equalization: bool = Field(False, description="Enable histogram equalization")
-    
-    # CLAHE (Contrast Limited Adaptive Histogram Equalization)
-    clahe_enabled: bool = Field(True, description="Enable CLAHE contrast enhancement")
-    clahe_clip_limit: float = Field(3.0, ge=1.0, le=6.0, description="CLAHE clip limit")
-    clahe_tile_grid_size: int = Field(8, ge=4, le=16, description="CLAHE tile grid size")
-
-
-class ProcessingSettings(BaseModel):
-    """AI model and detection processing configuration"""
-    
-    snapshot_interval: int = Field(5, ge=1, le=60, description="Seconds between snapshots")
-    confidence_threshold: float = Field(0.5, ge=0.1, le=1.0, description="Detection confidence threshold")
-    model_path: str = Field("models/yolo11m.pt", description="Path to AI model file")
-    processing_enabled: bool = Field(True, description="Enable detection processing")
-
-
-class APISettings(BaseModel):
-    """API server configuration"""
-    
-    port: int = Field(9091, ge=1024, le=65535, description="API server port")
-    host: str = Field("0.0.0.0", description="API server host")
-
-
-class VideoSource(BaseModel):
-    """Video input source configuration"""
-    
-    source: Union[str, int] = Field("", description="Video source (camera device number or file path)")
-    
-    @field_validator('source')
-    @classmethod
-    def validate_video_source(cls, v):
-        """Validate video source format and security"""
-        if isinstance(v, int):
-            if v < 0 or v > 10:  # Security: limit camera device range
-                raise ValueError("Camera device must be between 0-10")
-            return v
-        
-        if isinstance(v, str):
-            if v == "":
-                return "0"  # Default to camera 0
-            
-            # Security: validate file paths to prevent directory traversal
-            if v.startswith("/"):
-                # Absolute path - validate it exists and is within allowed directories
-                path = Path(v)
-                if not path.exists():
-                    raise ValueError(f"Video file does not exist: {v}")
-                # Additional security checks could be added here
-            
-            return v
-        
-        raise ValueError("Video source must be camera device number (int) or file path (str)")
-
+# Shared models imported above - no longer defined here
 
 class ValidationSettings(BaseModel):
     """Security and validation configuration"""
@@ -253,52 +178,9 @@ class ParkingConfig(BaseModel):
         ]
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert config to dictionary for API responses"""
-        return {
-            # Processing settings (flattened for backward compatibility)
-            "snapshot_interval": self.processing.snapshot_interval,
-            "confidence_threshold": self.processing.confidence_threshold,
-            "model_path": self.processing.model_path,
-            "processing_enabled": self.processing.processing_enabled,
-            
-            # API settings
-            "api_port": self.api.port,
-            "api_host": self.api.host,
-            
-            # Video source
-            "video_source": self.video.source,
-            
-            # Camera settings
-            "camera_width": self.camera.width,
-            "camera_height": self.camera.height,
-            "camera_fps": self.camera.fps,
-            "camera_exposure": self.camera.exposure,
-            "camera_gain": self.camera.gain,
-            "camera_brightness": self.camera.brightness,
-            "camera_contrast": self.camera.contrast,
-            "camera_saturation": self.camera.saturation,
-            "camera_sharpness": self.camera.sharpness,
-            "camera_white_balance": self.camera.white_balance,
-            "camera_autofocus": self.camera.autofocus,
-            "camera_warmup_frames": self.camera.warmup_frames,
-            "camera_buffer_size": self.camera.buffer_size,
-            "camera_mirror": self.camera.mirror,
-            
-            # Enhancement settings
-            "enable_auto_enhance": self.enhancement.auto_enhance,
-            "gamma_correction": self.enhancement.gamma_correction,
-            "histogram_equalization": self.enhancement.histogram_equalization,
-            "clahe_enabled": self.enhancement.clahe_enabled,
-            "clahe_clip_limit": self.enhancement.clahe_clip_limit,
-            "clahe_tile_grid_size": self.enhancement.clahe_tile_grid_size,
-            
-            # Runtime state
-            "last_snapshot_epoch": self.last_snapshot_epoch,
-            
-            # System settings
-            "log_level": self.log_level.value if hasattr(self.log_level, "value") else self.log_level,
-            "debug": self.debug,
-            
-            # Zone information
-            "total_zones": self.get_total_zones(),
-        }
+        """Convert config to dictionary for API responses using DataAccessor"""
+        from ..services.data_accessor import DataAccessor
+        
+        # Use DataAccessor for automatic flattening
+        accessor = DataAccessor(self)
+        return accessor.get_data(format_type="flat", include_metadata=False)

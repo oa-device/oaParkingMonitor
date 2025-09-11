@@ -28,7 +28,7 @@ from .manager import ConfigManager
 
 from .enums import DetectionDifficulty, LogLevel
 
-from .validation import ConfigLoader, ConfigSaver, YamlTransformer, ConfigValidator
+from .validation import ConfigLoader, ConfigSaver, ConfigValidator
 
 # Backward compatibility aliases (deprecated but supported)
 from .manager import MVPConfigManager, MVPConfig
@@ -53,7 +53,7 @@ __all__ = [
     # Validation utilities (advanced usage)
     "ConfigLoader",
     "ConfigSaver", 
-    "YamlTransformer",
+
     "ConfigValidator",
     
     # Backward compatibility (deprecated)
