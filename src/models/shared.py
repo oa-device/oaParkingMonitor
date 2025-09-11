@@ -38,21 +38,43 @@ class CameraSettings(BaseModel):
     mirror: bool = Field(False, description="Mirror camera image horizontally")
 
 
-# Dynamic models created by ModelFactory - no longer duplicated here
-from .model_factory import ModelFactory
+class ImageEnhancement(BaseModel):
+    """Image enhancement and preprocessing settings"""
+    
+    auto_enhance: bool = Field(False, description="Enable automatic image enhancement")
+    gamma_correction: float = Field(1.0, ge=0.1, le=3.0, description="Gamma correction factor")
+    histogram_equalization: bool = Field(False, description="Enable histogram equalization")
+    clahe_enabled: bool = Field(False, description="Enable CLAHE (Contrast Limited Adaptive Histogram Equalization)")
+    clahe_clip_limit: float = Field(2.0, ge=1.0, le=10.0, description="CLAHE clip limit")
+    clahe_tile_grid_size: int = Field(8, ge=2, le=16, description="CLAHE tile grid size")
 
-# Create camera models dynamically to eliminate duplication
-_camera_models = ModelFactory.get_all_camera_models()
 
-# Export dynamically created models
-CameraResolutionSettings = _camera_models['CameraResolutionSettings']
-CameraExposureSettings = _camera_models['CameraExposureSettings'] 
-CameraImageQuality = _camera_models['CameraImageQuality']
-CameraFocusSettings = _camera_models['CameraFocusSettings']
-CameraEnhancementSettings = _camera_models['CameraEnhancementSettings']
-CameraMiscSettings = _camera_models['CameraMiscSettings']
-CameraSettingsRequest = _camera_models['CameraSettingsRequest']
-CameraSettingsResponse = _camera_models['CameraSettingsResponse']
-CameraPresetInfo = _camera_models['CameraPresetInfo']
-CameraPresetsResponse = _camera_models['CameraPresetsResponse']
-CameraOperationResponse = _camera_models['CameraOperationResponse']
+class ProcessingSettings(BaseModel):
+    """Processing and detection configuration settings"""
+    
+    confidence_threshold: float = Field(0.5, ge=0.1, le=1.0, description="Detection confidence threshold")
+    nms_threshold: float = Field(0.4, ge=0.1, le=1.0, description="Non-maximum suppression threshold")
+    snapshot_interval: int = Field(5, ge=1, le=60, description="Snapshot interval in seconds")
+    max_detections: int = Field(100, ge=1, le=1000, description="Maximum detections per frame")
+    model_path: str = Field("models/yolo11m.pt", description="Path to YOLO model file")
+
+
+class APISettings(BaseModel):
+    """API server configuration settings"""
+    
+    host: str = Field("0.0.0.0", description="API server host")
+    port: int = Field(9091, ge=1024, le=65535, description="API server port")
+    debug: bool = Field(False, description="Enable debug mode")
+    reload: bool = Field(False, description="Enable auto-reload")
+
+
+class VideoSource(BaseModel):
+    """Video source configuration settings"""
+    
+    source: str = Field("0", description="Video source (camera index or file path)")
+    is_camera: bool = Field(True, description="Whether source is a camera device")
+    loop_video: bool = Field(True, description="Loop video playback for files")
+
+
+# Note: Dynamic models from ModelFactory are not imported here to avoid circular dependency
+# They can be imported directly from model_factory when needed
