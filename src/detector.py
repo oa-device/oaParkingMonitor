@@ -15,7 +15,7 @@ from typing import List, Dict, Any, Optional
 import cv2
 import numpy as np
 
-from .config import ConfigManager as MVPConfigManager, ParkingConfig as MVPConfig
+from .config import ConfigManager, ParkingConfig
 from .config.models import ParkingZone
 
 
@@ -49,7 +49,7 @@ class MVPParkingDetector:
         self.running = False
         
         # Load configuration using new system
-        self.config_manager = MVPConfigManager()
+        self.config_manager = ConfigManager()
         self.config = self.config_manager.config
         
         # Video source setup - handle both camera devices and file paths

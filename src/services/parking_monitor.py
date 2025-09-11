@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 from typing import Optional, Dict, Any
 
-from ..config import ParkingConfig as MVPConfig, ConfigManager as MVPConfigManager
+from ..config import ParkingConfig, ConfigManager
 from ..detector import MVPParkingDetector
 
 
@@ -27,7 +27,7 @@ class ParkingMonitorService:
     def __init__(self, config_file: Optional[str] = None):
         """Initialize the parking monitor service"""
         # Load configuration using new clean system
-        self.config_manager = MVPConfigManager(config_file)
+        self.config_manager = ConfigManager(config_file)
         self.config = self.config_manager.config
         
         # Initialize detector with clean configuration

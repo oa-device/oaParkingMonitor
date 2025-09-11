@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-from ..config import ParkingConfig as MVPConfig
+from ..config import ParkingConfig
 from ..models.shared import CameraSettings, ImageEnhancement
 from ..models import CameraPresetInfo
 from ..api.models import CameraSettingsRequest, CameraOperationResponse
@@ -27,7 +27,7 @@ class CameraController:
     - Safe defaults and error handling
     """
     
-    def __init__(self, config: MVPConfig, detector):
+    def __init__(self, config: ParkingConfig, detector):
         self.config = config
         self.detector = detector
         self.logger = logging.getLogger(__name__)
