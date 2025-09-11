@@ -3,14 +3,9 @@ oaParkingMonitor Configuration Package
 Clean, modular configuration system with Pydantic models and automatic YAML mapping
 
 Public API:
-    # New cleaner imports
     from .config import ParkingConfig, ConfigManager
     from .config import ParkingZone, CameraSettings, ImageEnhancement
-    from .config import DetectionDifficulty, LogLevel
-    
-    # Backward compatibility (deprecated but supported)
-    from .config import MVPConfig, MVPConfigManager
-"""
+    from .config import DetectionDifficulty, LogLevel"""
 
 # Core models and manager (recommended imports)
 from .models import (
@@ -29,9 +24,6 @@ from .manager import ConfigManager
 from ..models.enums import DetectionDifficulty, LogLevel
 
 from .validation import ConfigLoader, ConfigSaver, ConfigValidator
-
-# Backward compatibility aliases (deprecated but supported)
-from .manager import MVPConfigManager, MVPConfig
 
 # Public API - what users should import
 __all__ = [
@@ -52,13 +44,8 @@ __all__ = [
     
     # Validation utilities (advanced usage)
     "ConfigLoader",
-    "ConfigSaver", 
-
+    "ConfigSaver",
     "ConfigValidator",
-    
-    # Backward compatibility (deprecated)
-    "MVPConfig",
-    "MVPConfigManager",
 ]
 
 # Package metadata
