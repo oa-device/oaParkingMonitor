@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict
 from pydantic import ValidationError
 
-from ..models.shared import CameraPresetInfo
+from ..models import CameraPresetInfo
 
 
 class PresetLoader:

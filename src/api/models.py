@@ -6,8 +6,8 @@ Centralized Pydantic models for all API requests and responses
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 
-# Import shared models
-from ..models.shared import (
+# Import shared models from models package
+from ..models import (
     CameraResolutionSettings,
     CameraExposureSettings,
     CameraImageQuality,

@@ -9,7 +9,8 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 from ..config import ParkingConfig as MVPConfig
-from ..models.shared import CameraSettings, ImageEnhancement, CameraPresetInfo
+from ..models.shared import CameraSettings, ImageEnhancement
+from ..models import CameraPresetInfo
 from ..api.models import CameraSettingsRequest, CameraOperationResponse
 from .preset_loader import PresetLoader
 from .settings_applicator import SettingsApplicator
