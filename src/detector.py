@@ -553,7 +553,15 @@ class MVPParkingDetector:
                             detection.confidence, zone.detection_difficulty.value if hasattr(zone.detection_difficulty, "value") else zone.detection_difficulty
                         )
                         
-                        if adjusted_confidence >= self.config.processing.confidence_threshold:
+                        # Use lower threshold for hard zones to improve detection
+                        difficulty_value = (zone.detection_difficulty.value 
+                                          if hasattr(zone.detection_difficulty, "value") 
+                                          else zone.detection_difficulty)
+                        threshold = (self.config.processing.confidence_threshold * 0.7 
+                                   if difficulty_value == "hard" 
+                                   else self.config.processing.confidence_threshold)
+                        
+                        if adjusted_confidence >= threshold:
                             occupied = True
                             best_confidence = max(best_confidence, adjusted_confidence)
             
@@ -585,8 +593,8 @@ class MVPParkingDetector:
             # Boost confidence for easy zones
             return min(1.0, confidence * 1.1)
         elif difficulty == "hard":
-            # Reduce confidence for hard zones (more conservative)
-            return confidence * 0.9
+            # Boost confidence for hard zones to improve detection
+            return min(1.0, confidence * 1.2)
         else:
             # Normal zones - no adjustment
             return confidence
@@ -822,7 +830,8 @@ class MVPParkingDetector:
             "available_zones": sum(1 for zone in self.config.parking_zones if not zone.occupied),
             "occupancy_rate": (sum(1 for zone in self.config.parking_zones if zone.occupied) / 
                              max(1, self.config.get_total_zones())),
-            "last_update_epoch": self.config.last_snapshot_epoch
+            "last_update_epoch": self.config.last_snapshot_epoch,
+            "video_source": str(self.video_source)
         }
     
     async def get_parking_spaces(self) -> Dict[str, Any]:
