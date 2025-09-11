@@ -48,7 +48,7 @@ api:
 
 # Video Input Source
 video:
-  source: ""  # Defaults to camera 0, or specify file path
+  source: "0"  # Defaults to camera 0, or specify file path
 
 # System Configuration
 log_level: "INFO"
