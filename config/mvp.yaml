@@ -3,10 +3,10 @@
 
 # AI Processing Configuration
 processing:
+  processing_enabled: true
   snapshot_interval: 5  # seconds between snapshots
   confidence_threshold: 0.5
   model_path: "models/yolo11m.pt"
-  processing_enabled: true
 
 # Camera Hardware Settings
 camera:
@@ -15,14 +15,10 @@ camera:
   height: 1080
   fps: 30
   
-  # Exposure and gain (optimized to fix overexposure)
-  exposure: 0.25  # Manual exposure (0-1, -1 for auto)
-  gain: 0.3       # Moderate gain
+  # Camera preset to use for image quality settings
+  active_preset: "auto"
   
-  # Image quality parameters
-  brightness: 0.4    # Slightly reduced
-  contrast: 0.6      # Increased for better definition
-  saturation: 0.5    # Normal
+  # Physical camera parameters (not affected by presets)
   sharpness: 0.6     # Increased for clarity
   white_balance: -1.0  # Auto white balance
   
@@ -32,13 +28,10 @@ camera:
   buffer_size: 1
   mirror: false  # No camera flip
 
-# Image Enhancement Pipeline
+# Image Enhancement Pipeline (moved to preset system)
 enhancement:
   auto_enhance: true
-  gamma_correction: 0.8     # Darken overexposed image
   histogram_equalization: false
-  clahe_enabled: true       # Enable CLAHE for better contrast
-  clahe_clip_limit: 3.0     # Higher for more contrast
   clahe_tile_grid_size: 8
 
 # API Server Settings

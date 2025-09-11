@@ -1,6 +1,38 @@
 # Camera Presets Configuration
 # Optimized for outdoor airport parking environment
 
+auto:
+  name: "Automatic Adjustment"
+  description: "Let camera automatically adjust to lighting conditions - recommended default"
+  settings:
+    exposure:
+      value: -1.0  # Automatic exposure
+    image_quality:
+      brightness: 0.5    # Neutral
+      contrast: 0.6      # Neutral  
+      saturation: 0.5    # Neutral
+      gain: -1.0         # Automatic gain
+    enhancement:
+      gamma_correction: 1.0      # Neutral - no adjustment
+      clahe_enabled: false       # Let camera handle contrast
+      clahe_clip_limit: 2.0      # Default value
+
+manual_outdoor:
+  name: "Manual Outdoor Settings"
+  description: "Manual settings previously used for outdoor bright conditions"
+  settings:
+    exposure:
+      value: 0.15
+    image_quality:
+      brightness: 0.25
+      contrast: 0.75
+      saturation: 0.5
+      gain: 0.25
+    enhancement:
+      gamma_correction: 0.65
+      clahe_enabled: true
+      clahe_clip_limit: 4.0
+
 outdoor_bright:
   name: "Bright Daylight"
   description: "Optimized for bright outdoor airport parking"
@@ -48,3 +80,19 @@ outdoor_overcast:
       gamma_correction: 1.0
       clahe_enabled: true
       clahe_clip_limit: 3.5
+
+outdoor_harsh:
+  name: "Very Bright/Harsh"
+  description: "Aggressive corrections for very bright outdoor conditions"
+  settings:
+    exposure:
+      value: 0.1
+    image_quality:
+      brightness: 0.2
+      contrast: 0.85
+      saturation: 0.45
+      gain: 0.15
+    enhancement:
+      gamma_correction: 0.55
+      clahe_enabled: true
+      clahe_clip_limit: 5.0

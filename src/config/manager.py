@@ -9,6 +9,7 @@ import logging
 
 from .models import ParkingConfig
 from .validation import ConfigLoader, ConfigSaver
+from .preset_loader import PresetLoader
 
 
 class ConfigManager:
@@ -48,6 +49,14 @@ class ConfigManager:
                     # Use defaults with warning
                     self._config = ParkingConfig()
                     logging.warning("No configuration file found, using defaults")
+            
+            # Apply preset if specified in configuration
+            if self._config.camera.active_preset:
+                preset_name = self._config.camera.active_preset
+                if PresetLoader.apply_preset_to_config(self._config, preset_name):
+                    logging.info(f"Applied camera preset: {preset_name}")
+                else:
+                    logging.warning(f"Failed to apply camera preset: {preset_name}")
             
             return self._config
             
