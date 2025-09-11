@@ -6,6 +6,21 @@ Centralized Pydantic models for all API requests and responses
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 
+# Import shared models
+from ..models.shared import (
+    CameraResolutionSettings,
+    CameraExposureSettings,
+    CameraImageQuality,
+    CameraFocusSettings,
+    CameraEnhancementSettings,
+    CameraMiscSettings,
+    CameraSettingsRequest,
+    CameraSettingsResponse,
+    CameraPresetInfo,
+    CameraPresetsResponse,
+    CameraOperationResponse,
+)
+
 
 # Core Response Models
 class HealthResponse(BaseModel):
@@ -25,94 +40,7 @@ class ErrorResponse(BaseModel):
     status_code: int
 
 
-# Camera Control Models
-class CameraResolutionSettings(BaseModel):
-    """Camera resolution and frame rate settings"""
-    width: int = Field(default=1920, ge=640, le=3840, description="Camera width resolution")
-    height: int = Field(default=1080, ge=480, le=2160, description="Camera height resolution")
-    fps: int = Field(default=30, ge=1, le=60, description="Camera frame rate")
-
-
-class CameraExposureSettings(BaseModel):
-    """Camera exposure control settings"""
-    mode: str = Field(default="manual", description="Exposure mode: 'auto' or 'manual'")
-    value: float = Field(default=0.25, ge=0.0, le=1.0, description="Manual exposure value (0-1)")
-
-
-class CameraImageQuality(BaseModel):
-    """Camera image quality parameters"""
-    gain: float = Field(default=0.3, ge=0.0, le=1.0, description="Camera gain (0-1)")
-    brightness: float = Field(default=0.4, ge=0.0, le=1.0, description="Camera brightness (0-1)")
-    contrast: float = Field(default=0.6, ge=0.0, le=1.0, description="Camera contrast (0-1)")
-    saturation: float = Field(default=0.5, ge=0.0, le=1.0, description="Camera saturation (0-1)")
-    sharpness: float = Field(default=0.6, ge=0.0, le=1.0, description="Camera sharpness (0-1)")
-
-
-class CameraFocusSettings(BaseModel):
-    """Camera focus and white balance settings"""
-    autofocus: bool = Field(default=True, description="Enable automatic focus")
-    white_balance: str = Field(default="auto", description="White balance mode: 'auto' or 'manual'")
-    white_balance_value: float = Field(default=-1.0, ge=-1.0, le=1.0, description="Manual white balance value")
-
-
-class CameraEnhancementSettings(BaseModel):
-    """Image enhancement and processing settings"""
-    auto_enhance: bool = Field(default=True, description="Enable automatic image enhancement")
-    gamma_correction: float = Field(default=0.8, ge=0.5, le=2.0, description="Gamma correction factor")
-    histogram_equalization: bool = Field(default=False, description="Enable histogram equalization")
-    clahe_enabled: bool = Field(default=True, description="Enable CLAHE contrast enhancement")
-    clahe_clip_limit: float = Field(default=3.0, ge=1.0, le=6.0, description="CLAHE clip limit")
-    clahe_tile_grid_size: int = Field(default=8, ge=4, le=16, description="CLAHE tile grid size")
-
-
-class CameraMiscSettings(BaseModel):
-    """Miscellaneous camera settings"""
-    mirror: bool = Field(default=False, description="Mirror camera image horizontally")
-    warmup_frames: int = Field(default=10, ge=1, le=50, description="Number of warmup frames")
-    buffer_size: int = Field(default=1, ge=1, le=10, description="Camera buffer size")
-
-
-class CameraSettingsRequest(BaseModel):
-    """Request model for updating camera settings"""
-    resolution: Optional[CameraResolutionSettings] = Field(None, description="Resolution settings")
-    exposure: Optional[CameraExposureSettings] = Field(None, description="Exposure settings")
-    image_quality: Optional[CameraImageQuality] = Field(None, description="Image quality settings")
-    focus: Optional[CameraFocusSettings] = Field(None, description="Focus settings")
-    enhancement: Optional[CameraEnhancementSettings] = Field(None, description="Enhancement settings")
-    misc: Optional[CameraMiscSettings] = Field(None, description="Miscellaneous settings")
-
-
-class CameraSettingsResponse(BaseModel):
-    """Response model for camera settings"""
-    camera_settings: Dict = Field(..., description="Current camera settings grouped by category")
-    is_camera_device: bool = Field(..., description="Whether using a camera device or video file")
-    device_initialized: bool = Field(..., description="Whether the camera device is initialized")
-    server_time_epoch: float = Field(..., description="Server timestamp")
-
-
-class CameraPresetInfo(BaseModel):
-    """Information about a camera preset"""
-    name: str = Field(..., description="Preset display name")
-    description: str = Field(..., description="Preset description")
-    settings: Dict = Field(..., description="Preset camera settings")
-
-
-class CameraPresetsResponse(BaseModel):
-    """Response model for available camera presets"""
-    presets: Dict[str, CameraPresetInfo] = Field(..., description="Available camera presets")
-    current_preset: str = Field(..., description="Currently active preset name")
-    server_time_epoch: float = Field(..., description="Server timestamp")
-
-
-class CameraOperationResponse(BaseModel):
-    """Response model for camera operations (apply/reset)"""
-    success: bool = Field(..., description="Whether the operation was successful")
-    message: str = Field(..., description="Operation result message")
-    applied_at: Optional[str] = Field(None, description="Timestamp when settings were applied")
-    preset: Optional[str] = Field(None, description="Preset name if applicable")
-    error: Optional[str] = Field(None, description="Error message if operation failed")
-
-
+# Camera Control Models - imported from shared models
 # Detection and Status Models
 class DetectionResponse(BaseModel):
     """Detection results response model"""

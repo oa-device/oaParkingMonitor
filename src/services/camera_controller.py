@@ -8,12 +8,11 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-from ..config import ParkingConfig as MVPConfig, CameraSettings, ImageEnhancement
-from ..api.models import (
-    CameraSettingsRequest, 
-    CameraOperationResponse,
-    CameraPresetInfo
-)
+from ..config import ParkingConfig as MVPConfig
+from ..models.shared import CameraSettings, ImageEnhancement, CameraPresetInfo
+from ..api.models import CameraSettingsRequest, CameraOperationResponse
+from .preset_loader import PresetLoader
+from .settings_applicator import SettingsApplicator
 
 
 class CameraController:
@@ -31,6 +30,8 @@ class CameraController:
         self.config = config
         self.detector = detector
         self.logger = logging.getLogger(__name__)
+        self.preset_loader = PresetLoader()
+        self.settings_applicator = SettingsApplicator()
     
     def get_current_settings(self) -> Dict[str, Any]:
         """Get current camera settings formatted for API response"""
@@ -74,79 +75,37 @@ class CameraController:
         }
     
     async def update_settings(self, settings: CameraSettingsRequest) -> CameraOperationResponse:
-        """Update camera settings with validation"""
+        """Update camera settings with validation using generic applicator"""
         try:
+            # Convert request to dictionary excluding unset fields
             settings_data = settings.model_dump(exclude_unset=True)
             
-            # Update camera settings
-            if "resolution" in settings_data:
-                res = settings_data["resolution"]
-                if "width" in res:
-                    self.config.camera.width = int(res["width"])
-                if "height" in res:
-                    self.config.camera.height = int(res["height"])
-                if "fps" in res:
-                    self.config.camera.fps = int(res["fps"])
+            # Validate settings structure
+            if not self.settings_applicator.validate_settings_structure(settings_data):
+                return CameraOperationResponse(
+                    success=False,
+                    error="Invalid settings structure",
+                    message="Settings validation failed"
+                )
             
-            # Update exposure settings
-            if "exposure" in settings_data:
-                exp = settings_data["exposure"]
-                if "value" in exp:
-                    self.config.camera.exposure = float(exp["value"])
+            # Apply settings using generic applicator
+            changes_applied = self.settings_applicator.apply_nested_settings(
+                target_config=self.config,
+                settings_data=settings_data
+            )
             
-            # Update image quality settings
-            if "image_quality" in settings_data:
-                iq = settings_data["image_quality"]
-                if "gain" in iq:
-                    self.config.camera.gain = float(iq["gain"])
-                if "brightness" in iq:
-                    self.config.camera.brightness = float(iq["brightness"])
-                if "contrast" in iq:
-                    self.config.camera.contrast = float(iq["contrast"])
-                if "saturation" in iq:
-                    self.config.camera.saturation = float(iq["saturation"])
-                if "sharpness" in iq:
-                    self.config.camera.sharpness = float(iq["sharpness"])
+            if not changes_applied:
+                return CameraOperationResponse(
+                    success=True,
+                    message="No changes were needed - settings already at requested values",
+                    applied_at=datetime.now().isoformat()
+                )
             
-            # Update focus settings
-            if "focus" in settings_data:
-                focus = settings_data["focus"]
-                if "autofocus" in focus:
-                    self.config.camera.autofocus = bool(focus["autofocus"])
-                if "white_balance_value" in focus:
-                    self.config.camera.white_balance = float(focus["white_balance_value"])
-            
-            # Update enhancement settings
-            if "enhancement" in settings_data:
-                enh = settings_data["enhancement"]
-                if "auto_enhance" in enh:
-                    self.config.enhancement.auto_enhance = bool(enh["auto_enhance"])
-                if "gamma_correction" in enh:
-                    self.config.enhancement.gamma_correction = float(enh["gamma_correction"])
-                if "histogram_equalization" in enh:
-                    self.config.enhancement.histogram_equalization = bool(enh["histogram_equalization"])
-                if "clahe_enabled" in enh:
-                    self.config.enhancement.clahe_enabled = bool(enh["clahe_enabled"])
-                if "clahe_clip_limit" in enh:
-                    self.config.enhancement.clahe_clip_limit = float(enh["clahe_clip_limit"])
-                if "clahe_tile_grid_size" in enh:
-                    self.config.enhancement.clahe_tile_grid_size = int(enh["clahe_tile_grid_size"])
-            
-            # Update misc settings
-            if "misc" in settings_data:
-                misc = settings_data["misc"]
-                if "mirror" in misc:
-                    self.config.camera.mirror = bool(misc["mirror"])
-                if "warmup_frames" in misc:
-                    self.config.camera.warmup_frames = int(misc["warmup_frames"])
-                if "buffer_size" in misc:
-                    self.config.camera.buffer_size = int(misc["buffer_size"])
-            
-            # Apply settings if camera device
+            # Apply settings to camera device if needed
             if self.detector.is_camera_device:
                 await self._reinitialize_camera()
             
-            self.logger.info("Camera settings updated successfully")
+            self.logger.info("Camera settings updated successfully using generic applicator")
             return CameraOperationResponse(
                 success=True,
                 message="Camera settings updated successfully",
@@ -188,83 +147,8 @@ class CameraController:
             )
     
     def get_available_presets(self) -> Dict[str, CameraPresetInfo]:
-        """Get available camera presets optimized for different conditions"""
-        return {
-            "outdoor_bright": CameraPresetInfo(
-                name="Outdoor Bright",
-                description="Optimized for bright outdoor parking lots",
-                settings={
-                    "exposure": {"value": 0.2},
-                    "image_quality": {
-                        "brightness": 0.3,
-                        "contrast": 0.7,
-                        "saturation": 0.6,
-                        "gain": 0.2
-                    },
-                    "enhancement": {
-                        "gamma_correction": 0.7,
-                        "clahe_enabled": True,
-                        "clahe_clip_limit": 2.5
-                    }
-                }
-            ),
-            "outdoor_normal": CameraPresetInfo(
-                name="Outdoor Normal",
-                description="Balanced settings for normal daylight",
-                settings={
-                    "exposure": {"value": 0.25},
-                    "image_quality": {
-                        "brightness": 0.4,
-                        "contrast": 0.6,
-                        "saturation": 0.5,
-                        "gain": 0.3
-                    },
-                    "enhancement": {
-                        "gamma_correction": 0.8,
-                        "clahe_enabled": True,
-                        "clahe_clip_limit": 3.0
-                    }
-                }
-            ),
-            "indoor_low_light": CameraPresetInfo(
-                name="Indoor Low Light",
-                description="Enhanced for indoor/garage environments",
-                settings={
-                    "exposure": {"value": 0.4},
-                    "image_quality": {
-                        "brightness": 0.6,
-                        "contrast": 0.8,
-                        "saturation": 0.4,
-                        "gain": 0.5
-                    },
-                    "enhancement": {
-                        "gamma_correction": 1.2,
-                        "clahe_enabled": True,
-                        "clahe_clip_limit": 4.0
-                    }
-                }
-            ),
-            "high_contrast": CameraPresetInfo(
-                name="High Contrast",
-                description="Maximum contrast for difficult conditions",
-                settings={
-                    "exposure": {"value": 0.3},
-                    "image_quality": {
-                        "brightness": 0.4,
-                        "contrast": 0.9,
-                        "saturation": 0.6,
-                        "sharpness": 0.8,
-                        "gain": 0.4
-                    },
-                    "enhancement": {
-                        "gamma_correction": 0.9,
-                        "clahe_enabled": True,
-                        "clahe_clip_limit": 5.0,
-                        "histogram_equalization": True
-                    }
-                }
-            )
-        }
+        """Get available camera presets from YAML configuration"""
+        return self.preset_loader.load_presets()
     
     async def apply_preset(self, preset_name: str) -> CameraOperationResponse:
         """Apply a camera preset"""
