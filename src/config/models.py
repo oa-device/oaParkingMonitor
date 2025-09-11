@@ -178,9 +178,14 @@ class ParkingConfig(BaseModel):
         ]
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert config to dictionary for API responses using DataAccessor"""
-        from ..services.data_accessor import DataAccessor
+        """Convert config to dictionary for API responses"""
+        # Use Pydantic's model_dump instead of DataAccessor to avoid circular dependency
+        data = self.model_dump(exclude_none=True, by_alias=True)
         
-        # Use DataAccessor for automatic flattening
-        accessor = DataAccessor(self)
-        return accessor.get_data(format_type="flat", include_metadata=False)
+        # Add runtime metadata
+        data["last_snapshot_epoch"] = self.last_snapshot_epoch
+        data["total_zones"] = self.get_total_zones()
+        data["easy_zones_count"] = self.get_easy_zones_count()
+        data["hard_zones_count"] = self.get_hard_zones_count()
+        
+        return data

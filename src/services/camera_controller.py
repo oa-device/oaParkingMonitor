@@ -36,7 +36,6 @@ class CameraController:
     
     def get_current_settings(self) -> Dict[str, Any]:
         """Get current camera settings formatted for API response"""
-        config_data = self.config.to_dict()
         
         return {
             "resolution": {
