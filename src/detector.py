@@ -47,13 +47,17 @@ class SnapshotResult:
 class MVPParkingDetector:
     """Simplified MVP parking detector with snapshot processing (Updated for modular config)"""
     
-    def __init__(self):
+    def __init__(self, config=None):
         self.logger = logging.getLogger(__name__)
         self.running = False
         
-        # Load configuration using new system
-        self.config_manager = ConfigManager()
-        self.config = self.config_manager.config
+        # Use provided config or load configuration using new system
+        if config is not None:
+            self.config = config
+            self.config_manager = None  # Using external config
+        else:
+            self.config_manager = ConfigManager()
+            self.config = self.config_manager.config
         
         # Video source setup - handle both camera devices and file paths
         video_source_str = str(self.config.video.source)
@@ -105,6 +109,8 @@ class MVPParkingDetector:
         self.logger.info(f"MVP Detector initialized with device: {self.device}")
         self.logger.info(f"Video source: {self.video_source}")
         self.logger.info(f"Snapshot interval: {self.config.processing.snapshot_interval} seconds")
+        if config is not None:
+            self.logger.info("Using shared configuration from service")
     
     def _is_apple_silicon(self) -> bool:
         """Check if running on Apple Silicon"""
@@ -414,17 +420,24 @@ class MVPParkingDetector:
         """Start the snapshot processing loop"""
         self.running = True
         self.logger.info("Starting snapshot processing loop...")
+        print(f"DEBUG: Snapshot loop started, running={self.running}")
         
         while self.running:
             try:
-                if self.config.should_process_snapshot():
-                    await self.process_snapshot()
+                should_process = self.config.should_process_snapshot()
+                print(f"DEBUG: Should process snapshot: {should_process}, last_epoch: {self.config.last_snapshot_epoch}, interval: {self.config.processing.snapshot_interval}")
+                
+                if should_process:
+                    print("DEBUG: Processing snapshot...")
+                    result = await self.process_snapshot()
+                    print(f"DEBUG: Snapshot processed, result: {result is not None}")
                 
                 # Sleep for 1 second before checking again
                 await asyncio.sleep(1.0)
                 
             except Exception as e:
                 self.logger.error(f"Snapshot loop error: {e}")
+                print(f"DEBUG: Snapshot loop error: {e}")
                 await asyncio.sleep(5.0)  # Wait longer on error
         
         self.logger.info("Snapshot processing loop stopped")
