@@ -88,7 +88,7 @@ class ImagePreprocessor:
         # Identify edge zones (hard difficulty zones at frame edges)
         edge_zones = [
             zone for zone in zones 
-            if zone.get("detection_difficulty") == DetectionDifficulty.HARD.value
+            if zone.detection_difficulty == DetectionDifficulty.HARD.value
         ]
         
         if not edge_zones:
@@ -129,7 +129,7 @@ class ImagePreprocessor:
                        zone_enhanced.astype(np.float32) * mask_3d).astype(np.uint8)
             
         except Exception as e:
-            self.logger.debug(f"Zone enhancement failed for zone {zone.get('id', 'unknown')}: {e}")
+            self.logger.debug(f"Zone enhancement failed for zone {getattr(zone, 'id', 'unknown')}: {e}")
         
         return enhanced
     

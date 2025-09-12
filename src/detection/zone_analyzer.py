@@ -81,7 +81,7 @@ class ZoneAnalyzer:
         zone_id = zone["id"]
         space_id = zone["space_id"]
         coordinates = zone["coordinates"]
-        difficulty = DetectionDifficulty(zone.get("detection_difficulty", "easy"))
+        difficulty = DetectionDifficulty(getattr(zone, 'detection_difficulty', 'easy'))
         
         # Convert coordinates to numpy array for OpenCV
         zone_polygon = np.array(coordinates, dtype=np.int32)
@@ -216,7 +216,7 @@ class ZoneAnalyzer:
             iou = intersection_area / union_area if union_area > 0 else 0.0
             
             # For hard/edge zones, accept lower IoU threshold
-            difficulty = DetectionDifficulty(zone.get("detection_difficulty", "easy"))
+            difficulty = DetectionDifficulty(getattr(zone, 'detection_difficulty', 'easy'))
             threshold = 0.05 if difficulty == DetectionDifficulty.HARD else 0.25
             
             inside = iou >= threshold
