@@ -65,7 +65,7 @@ class MVPParkingDetector:
             self.video_source = self.config.video.source  # Keep as string for camera device
         else:
             self.video_source = Path(self.config.video.source)  # Convert to Path for file
-        self.model_path = Path.home() / "orangead" / "parking-monitor" / self.config.processing.model_path
+        self.model_path = Path.home() / "orangead" / "oaParkingMonitor" / self.config.processing.model_path
         
         # Device detection
         self.device = self._detect_optimal_device()
