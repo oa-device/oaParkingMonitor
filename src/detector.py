@@ -420,24 +420,17 @@ class MVPParkingDetector:
         """Start the snapshot processing loop"""
         self.running = True
         self.logger.info("Starting snapshot processing loop...")
-        print(f"DEBUG: Snapshot loop started, running={self.running}")
         
         while self.running:
             try:
-                should_process = self.config.should_process_snapshot()
-                print(f"DEBUG: Should process snapshot: {should_process}, last_epoch: {self.config.last_snapshot_epoch}, interval: {self.config.processing.snapshot_interval}")
-                
-                if should_process:
-                    print("DEBUG: Processing snapshot...")
-                    result = await self.process_snapshot()
-                    print(f"DEBUG: Snapshot processed, result: {result is not None}")
+                if self.config.should_process_snapshot():
+                    await self.process_snapshot()
                 
                 # Sleep for 1 second before checking again
                 await asyncio.sleep(1.0)
                 
             except Exception as e:
                 self.logger.error(f"Snapshot loop error: {e}")
-                print(f"DEBUG: Snapshot loop error: {e}")
                 await asyncio.sleep(5.0)  # Wait longer on error
         
         self.logger.info("Snapshot processing loop stopped")

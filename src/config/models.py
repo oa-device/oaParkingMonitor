@@ -154,11 +154,7 @@ class ParkingConfig(BaseModel):
     
     def should_process_snapshot(self) -> bool:
         """Check if enough time has passed for next snapshot"""
-        current_time = time.time()
-        time_since_last = current_time - self.last_snapshot_epoch
-        should_process = time_since_last >= self.processing.snapshot_interval
-        print(f"DEBUG: should_process_snapshot - current: {current_time}, last: {self.last_snapshot_epoch}, diff: {time_since_last:.2f}, interval: {self.processing.snapshot_interval}, result: {should_process}")
-        return should_process
+        return time.time() - self.last_snapshot_epoch >= self.processing.snapshot_interval
     
     def mark_snapshot_processed(self):
         """Mark current time as last snapshot processing time"""
