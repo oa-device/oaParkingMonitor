@@ -10,236 +10,402 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
+        :root {
+            --primary-green: #00ff88;
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --text-muted: #666666;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a1a;
-            color: #ffffff;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
         }
-        
+
         .container {
-            max-width: 1400px;
+            max-width: 2400px;
+            width: 100%;
             margin: 0 auto;
+            padding: var(--spacing-lg);
         }
-        
+
+        /* Header Section */
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: var(--spacing-xl);
         }
-        
+
         .header h1 {
             font-size: 2.5rem;
-            margin-bottom: 10px;
-            color: #00ff88;
+            font-weight: 700;
+            color: var(--primary-green);
+            margin-bottom: var(--spacing-md);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         }
-        
+
         .status-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #2d2d2d;
-            padding: 15px 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 15px;
+            background: var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+            transition: var(--transition);
         }
-        
+
+        .status-bar:hover {
+            box-shadow: var(--shadow-medium);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
         .status-item {
             display: flex;
             flex-direction: column;
             align-items: center;
+            text-align: center;
+            padding: var(--spacing-sm);
         }
-        
+
         .status-label {
-            font-size: 0.9rem;
-            color: #888;
-            margin-bottom: 5px;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-xs);
+            font-weight: 500;
         }
-        
+
         .status-value {
-            font-size: 1.3rem;
-            font-weight: bold;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
         }
-        
-        .status-healthy { color: #00ff88; }
+
+        .status-healthy { color: var(--primary-green); }
         .status-warning { color: #ffaa00; }
         .status-error { color: #ff4444; }
-        
+
+        /* Main Layout */
         .main-content {
             display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 20px;
+            grid-template-columns: 1.618fr 1fr;
+            gap: var(--spacing-xl);
+            align-items: start;
         }
-        
-        .camera-controls-panel {
-            background: #2d2d2d;
-            border-radius: 10px;
-            margin-bottom: 20px;
+
+        /* Live View Panel */
+        .snapshot-panel {
+            background: var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-medium);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+            height: fit-content;
         }
-        
-        .controls-section {
-            padding: 15px 20px;
-            border-bottom: 1px solid #3d3d3d;
+
+        .snapshot-panel:hover {
+            box-shadow: var(--shadow-heavy);
+            border-color: rgba(0, 255, 136, 0.2);
         }
-        
-        .controls-section:last-child {
-            border-bottom: none;
-        }
-        
-        .section-title {
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #00ff88;
-        }
-        
-        .control-group {
-            margin-bottom: 15px;
-        }
-        
-        .control-label {
-            display: block;
-            font-size: 0.9rem;
-            color: #ccc;
-            margin-bottom: 5px;
-        }
-        
-        .control-input {
-            width: 100%;
-            background: #1a1a1a;
-            border: 1px solid #444;
-            border-radius: 5px;
-            padding: 8px 10px;
-            color: #fff;
-            font-size: 0.9rem;
-        }
-        
-        .control-input:focus {
-            outline: none;
-            border-color: #00ff88;
-        }
-        
-        .range-input {
-            width: 100%;
-            height: 5px;
-            border-radius: 5px;
-            background: #444;
-            outline: none;
-            -webkit-appearance: none;
-        }
-        
-        .range-input::-webkit-slider-thumb {
-            appearance: none;
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            background: #00ff88;
-            cursor: pointer;
-        }
-        
-        .range-input::-moz-range-thumb {
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            background: #00ff88;
-            cursor: pointer;
-            border: none;
-        }
-        
-        .range-value {
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: 2px;
-        }
-        
-        .control-buttons {
+
+        .panel-header {
+            background: var(--bg-secondary);
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
+            justify-content: space-between;
+            align-items: center;
         }
-        
-        .btn {
-            flex: 1;
-            background: #3d3d3d;
-            border: 1px solid #555;
-            border-radius: 5px;
-            color: #fff;
-            padding: 8px 12px;
-            font-size: 0.8rem;
+
+        .panel-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .refresh-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary-green);
+            transition: var(--transition);
+        }
+
+        .refresh-indicator.loading {
+            background: #ffaa00;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+
+        .image-container {
+            position: relative;
+            background: var(--bg-primary);
+            aspect-ratio: 16/9;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .snapshot-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: var(--transition);
             cursor: pointer;
-            transition: all 0.3s ease;
         }
-        
-        .btn:hover {
-            background: #4d4d4d;
-            border-color: #666;
+
+        .snapshot-image.cover { object-fit: cover; }
+        .snapshot-image.fill { object-fit: fill; }
+
+        .image-overlay {
+            position: absolute;
+            top: var(--spacing-md);
+            right: var(--spacing-md);
+            display: flex;
+            gap: var(--spacing-sm);
+            opacity: 0;
+            transition: var(--transition);
         }
-        
-        .btn.primary {
-            background: #00ff88;
-            border-color: #00ff88;
-            color: #000;
+
+        .image-container:hover .image-overlay {
+            opacity: 1;
         }
-        
-        .btn.primary:hover {
-            background: #00cc6b;
+
+        .control-btn {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--border-radius-sm);
+            color: var(--text-primary);
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            transition: var(--transition);
+            backdrop-filter: blur(8px);
         }
-        
-        .btn.danger {
-            background: #ff4444;
-            border-color: #ff4444;
-            color: #fff;
+
+        .control-btn:hover {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: var(--primary-green);
+            color: var(--primary-green);
         }
-        
-        .btn.danger:hover {
-            background: #cc3333;
+
+        .no-image {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            gap: var(--spacing-md);
         }
-        
-        .preset-buttons {
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--bg-secondary);
+            border-top: 3px solid var(--primary-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Sidebar Panels */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .panel {
+            background: var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .panel:hover {
+            box-shadow: var(--shadow-medium);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .panel-content {
+            padding: var(--spacing-lg);
+        }
+
+        /* Parking Zones */
+        .zones-grid {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .zone-row {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 10px;
+            gap: var(--spacing-sm);
+            justify-items: center;
         }
-        
-        .preset-btn {
-            background: #1a1a1a;
-            border: 1px solid #444;
-            border-radius: 5px;
-            color: #ccc;
-            padding: 6px 8px;
+
+        .zone-row.front { grid-template-columns: repeat(7, 1fr); }
+        .zone-row.back { 
+            grid-template-columns: repeat(5, 1fr);
+            max-width: calc(5/7 * 100%);
+            margin: 0 auto;
+        }
+
+        .zone-card {
+            background: var(--bg-secondary);
+            border-radius: var(--border-radius-sm);
+            padding: var(--spacing-sm);
+            text-align: center;
+            border: 2px solid transparent;
+            transition: var(--transition);
+            width: 100%;
+            height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .zone-card.available {
+            border-color: var(--primary-green);
+            background: rgba(0, 255, 136, 0.1);
+            box-shadow: 0 0 16px rgba(0, 255, 136, 0.2);
+        }
+
+        .zone-card.occupied {
+            border-color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            box-shadow: 0 0 16px rgba(255, 68, 68, 0.2);
+        }
+
+        .zone-card.hard {
+            border-color: #ffaa00;
+            background: rgba(255, 170, 0, 0.1);
+            box-shadow: 0 0 16px rgba(255, 170, 0, 0.2);
+        }
+
+        .zone-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .zone-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .zone-status {
             font-size: 0.75rem;
+            opacity: 0.9;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .zone-confidence {
+            font-size: 0.65rem;
+            opacity: 0.7;
+            font-weight: 500;
+        }
+
+        /* Statistics Panel */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--border-radius-sm);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .stat-item:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-xs);
+            display: block;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Camera Controls */
+        .camera-controls {
+            transition: var(--transition);
+        }
+
+        .controls-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             cursor: pointer;
-            transition: all 0.3s ease;
+            padding: var(--spacing-md) 0;
         }
-        
-        .preset-btn:hover {
-            background: #2a2a2a;
-            border-color: #555;
-            color: #fff;
-        }
-        
-        .preset-btn.active {
-            background: #00ff88;
-            border-color: #00ff88;
-            color: #000;
-        }
-        
+
         .toggle-switch {
             position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 20px;
-            margin-left: 10px;
+            width: 44px;
+            height: 24px;
         }
-        
+
         .toggle-switch input {
             opacity: 0;
             width: 0;
             height: 0;
         }
-        
+
         .slider {
             position: absolute;
             cursor: pointer;
@@ -248,221 +414,185 @@
             right: 0;
             bottom: 0;
             background-color: #444;
-            transition: 0.3s;
-            border-radius: 20px;
+            transition: var(--transition);
+            border-radius: 24px;
         }
-        
+
         .slider:before {
             position: absolute;
             content: "";
-            height: 16px;
-            width: 16px;
-            left: 2px;
-            bottom: 2px;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
             background-color: white;
-            transition: 0.3s;
+            transition: var(--transition);
             border-radius: 50%;
         }
-        
+
         input:checked + .slider {
-            background-color: #00ff88;
+            background-color: var(--primary-green);
         }
-        
+
         input:checked + .slider:before {
             transform: translateX(20px);
         }
-        
-        .snapshot-panel {
-            background: #2d2d2d;
-            border-radius: 10px;
-            overflow: hidden;
+
+        .controls-content {
+            display: none;
+            margin-top: var(--spacing-md);
+            padding-top: var(--spacing-md);
+            border-top: 1px solid var(--border-color);
         }
-        
-        .panel-header {
-            background: #3d3d3d;
-            padding: 15px 20px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+
+        .controls-content.expanded {
+            display: block;
         }
-        
-        .refresh-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #00ff88;
-        }
-        
-        .refresh-indicator.loading {
-            background: #ffaa00;
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-        
-        .snapshot-container {
-            position: relative;
-            padding: 20px;
-            text-align: center;
-        }
-        
-        .snapshot-image {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-        
-        .no-snapshot {
-            padding: 60px 20px;
-            color: #888;
-            font-size: 1.1rem;
-        }
-        
-        .zones-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .zones-grid {
-            background: #2d2d2d;
-            border-radius: 10px;
-            padding: 20px;
-        }
-        
-        .zone-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .zone-card {
-            background: #1a1a1a;
-            border-radius: 8px;
-            padding: 10px;
-            text-align: center;
-            border: 2px solid transparent;
-            transition: all 0.3s ease;
-        }
-        
-        .zone-card.occupied {
-            border-color: #ff4444;
-            background: rgba(255, 68, 68, 0.1);
-        }
-        
-        .zone-card.available {
-            border-color: #00ff88;
-            background: rgba(0, 255, 136, 0.1);
-        }
-        
-        .zone-card.hard {
-            border-color: #ffaa00;
-            background: rgba(255, 170, 0, 0.1);
-        }
-        
-        .zone-name {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .zone-status {
-            font-size: 0.8rem;
-            opacity: 0.8;
-        }
-        
-        .zone-confidence {
-            font-size: 0.7rem;
-            margin-top: 3px;
-            opacity: 0.6;
-        }
-        
-        .stats-panel {
-            background: #2d2d2d;
-            border-radius: 10px;
-            padding: 20px;
-        }
-        
-        .stat-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #3d3d3d;
-        }
-        
-        .stat-item:last-child {
-            border-bottom: none;
-        }
-        
-        .stat-value {
-            font-weight: bold;
-        }
-        
+
+        /* Last Update */
         .last-update {
             text-align: center;
-            margin-top: 15px;
-            font-size: 0.9rem;
-            color: #888;
+            margin-top: var(--spacing-lg);
+            padding-top: var(--spacing-md);
+            border-top: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            color: var(--text-muted);
         }
-        
-        /* Stale data indicators */
-        .data-warning .dashboard-panel {
-            border: 2px solid #ffaa00;
-            box-shadow: 0 0 10px rgba(255, 170, 0, 0.3);
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1.4fr 1fr;
+                gap: var(--spacing-lg);
+            }
+
+            .zone-card {
+                height: 65px;
+            }
         }
-        
-        .data-stale .dashboard-panel {
-            border: 2px solid #ff4444;
-            box-shadow: 0 0 10px rgba(255, 68, 68, 0.3);
-        }
-        
-        .stale-alert {
-            background: rgba(255, 68, 68, 0.9);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-left: auto;
-            font-size: 0.9rem;
-            font-weight: bold;
-            display: none;
-            animation: pulse 2s infinite;
-        }
-        
-        .data-warning .stale-alert {
-            background: rgba(255, 170, 0, 0.9);
-        }
-        
-        @media (max-width: 768px) {
+
+        @media (max-width: 900px) {
             .main-content {
                 grid-template-columns: 1fr;
+                gap: var(--spacing-lg);
             }
-            
+
+            .sidebar {
+                order: -1;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--spacing-md);
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
             .status-bar {
-                flex-direction: column;
-                gap: 15px;
+                grid-template-columns: repeat(2, 1fr);
             }
-            
-            .zone-row {
-                grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-                gap: 8px;
+
+            .zone-row.front { grid-template-columns: repeat(4, 1fr); }
+            .zone-row.back { 
+                grid-template-columns: repeat(3, 1fr);
+                max-width: calc(3/4 * 100%);
             }
-            
-            .stale-alert {
+
+            .zone-card {
+                height: 60px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .status-bar {
+                grid-template-columns: 1fr;
+            }
+
+            .zone-card {
+                height: 55px;
+                padding: var(--spacing-xs);
+            }
+
+            .zone-name {
                 font-size: 0.8rem;
-                padding: 8px 12px;
             }
+
+            .zone-status {
+                font-size: 0.7rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Error States */
+        .error-message {
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid #ff4444;
+            border-radius: var(--border-radius-sm);
+            padding: var(--spacing-md);
+            color: #ff4444;
+            text-align: center;
+            margin: var(--spacing-md) 0;
+        }
+
+        .warning-message {
+            background: rgba(255, 170, 0, 0.1);
+            border: 1px solid #ffaa00;
+            border-radius: var(--border-radius-sm);
+            padding: var(--spacing-md);
+            color: #ffaa00;
+            text-align: center;
+            margin: var(--spacing-md) 0;
+        }
+
+        /* Accessibility */
+        button:focus-visible,
+        .control-btn:focus-visible {
+            outline: 2px solid var(--primary-green);
+            outline-offset: 2px;
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <!-- Header Section -->
+        <header class="header">
             <h1>Parking Monitor Dashboard</h1>
             <div class="status-bar">
                 <div class="status-item">
@@ -471,685 +601,434 @@
                 </div>
                 <div class="status-item">
                     <span class="status-label">Total Spaces</span>
-                    <span class="status-value" id="total-spaces">0</span>
+                    <span class="status-value" id="total-spaces">12</span>
                 </div>
                 <div class="status-item">
                     <span class="status-label">Occupied</span>
-                    <span class="status-value" id="occupied-spaces">0</span>
+                    <span class="status-value status-error" id="occupied-spaces">0</span>
                 </div>
                 <div class="status-item">
                     <span class="status-label">Available</span>
-                    <span class="status-value status-healthy" id="available-spaces">0</span>
+                    <span class="status-value status-healthy" id="available-spaces">12</span>
                 </div>
                 <div class="status-item">
                     <span class="status-label">Occupancy Rate</span>
                     <span class="status-value" id="occupancy-rate">0%</span>
                 </div>
                 <div class="status-item">
-                    <span class="status-label">Model</span>
-                    <span class="status-value" id="model-status">Loading</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Next Snapshot</span>
-                    <span class="status-value" id="next-snapshot" style="font-weight: bold;">--</span>
+                    <span class="status-label">Model Status</span>
+                    <span class="status-value status-warning" id="model-status">Loading</span>
                 </div>
             </div>
-        </div>
-        
-        <div class="main-content">
-            <div class="snapshot-panel">
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Live Parking View -->
+            <section class="snapshot-panel">
                 <div class="panel-header">
-                    <span>Live Parking View</span>
+                    <span class="panel-title">Live Parking View</span>
                     <div class="refresh-indicator" id="refresh-indicator"></div>
                 </div>
-                <div class="snapshot-container">
-                    <img class="snapshot-image" id="snapshot-image" style="display: none;" alt="Parking lot snapshot">
-                    <div class="no-snapshot" id="no-snapshot">Loading parking view...</div>
+                <div class="image-container">
+                    <img class="snapshot-image" id="snapshot-image" style="display: none;" alt="Live parking lot view">
+                    <div class="no-image" id="no-image">
+                        <div class="loading-spinner"></div>
+                        <span>Loading parking view...</span>
+                    </div>
+                    <div class="image-overlay">
+                        <button class="control-btn" id="fit-toggle" title="Toggle image fit" aria-label="Toggle image fit">⌗</button>
+                        <button class="control-btn" id="refresh-btn" title="Refresh image" aria-label="Refresh image">↻</button>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="zones-panel">
-                <!-- Camera Controls Panel -->
-                <div class="camera-controls-panel">
+            </section>
+
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <!-- Camera Controls -->
+                <section class="panel camera-controls">
                     <div class="panel-header">
-                        <span>Camera Controls <small style="color: #888;">(Auto-Adjustment Enabled)</small></span>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="camera-controls-toggle">
-                            <span class="slider"></span>
-                        </label>
+                        <span class="panel-title">Camera Controls</span>
                     </div>
-                    
-                    <div id="camera-controls-content">
-                        <!-- Presets Section -->
-                        <div class="controls-section">
-                            <div class="section-title">Presets</div>
-                            <div class="preset-buttons">
-                                <button class="preset-btn" data-preset="outdoor_bright">Bright</button>
-                                <button class="preset-btn" data-preset="outdoor_normal">Normal</button>
-                                <button class="preset-btn" data-preset="indoor_low_light">Low Light</button>
-                                <button class="preset-btn" data-preset="high_contrast">High Contrast</button>
-                            </div>
+                    <div class="panel-content">
+                        <div class="controls-toggle" id="controls-toggle">
+                            <span>Enable Manual Controls</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="camera-toggle">
+                                <span class="slider"></span>
+                            </label>
                         </div>
-                        
-                        <!-- Exposure Section -->
-                        <div class="controls-section">
-                            <div class="section-title">Exposure & Brightness</div>
-                            <div class="control-group">
-                                <label class="control-label">Exposure</label>
-                                <input type="range" class="range-input" id="exposure-slider" 
-                                       min="0" max="1" step="0.01" value="0.25">
-                                <div class="range-value" id="exposure-value">0.25</div>
-                            </div>
-                            <div class="control-group">
-                                <label class="control-label">Brightness</label>
-                                <input type="range" class="range-input" id="brightness-slider"
-                                       min="0" max="1" step="0.01" value="0.4">
-                                <div class="range-value" id="brightness-value">0.4</div>
-                            </div>
-                            <div class="control-group">
-                                <label class="control-label">Gain</label>
-                                <input type="range" class="range-input" id="gain-slider"
-                                       min="0" max="1" step="0.01" value="0.3">
-                                <div class="range-value" id="gain-value">0.3</div>
-                            </div>
+                        <div class="controls-content" id="controls-content">
+                            <p style="color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+                                Manual camera controls would appear here when enabled.
+                            </p>
                         </div>
-                        
-                        <!-- Image Quality Section -->
-                        <div class="controls-section">
-                            <div class="section-title">Image Quality</div>
-                            <div class="control-group">
-                                <label class="control-label">Contrast</label>
-                                <input type="range" class="range-input" id="contrast-slider"
-                                       min="0" max="1" step="0.01" value="0.6">
-                                <div class="range-value" id="contrast-value">0.6</div>
+                    </div>
+                </section>
+
+                <!-- Parking Zones -->
+                <section class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Parking Zones</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="zones-grid">
+                            <div class="zone-row front" id="front-zones">
+                                <!-- A1-A7 zones will be populated here -->
                             </div>
-                            <div class="control-group">
-                                <label class="control-label">Saturation</label>
-                                <input type="range" class="range-input" id="saturation-slider"
-                                       min="0" max="1" step="0.01" value="0.5">
-                                <div class="range-value" id="saturation-value">0.5</div>
-                            </div>
-                            <div class="control-group">
-                                <label class="control-label">Sharpness</label>
-                                <input type="range" class="range-input" id="sharpness-slider"
-                                       min="0" max="1" step="0.01" value="0.6">
-                                <div class="range-value" id="sharpness-value">0.6</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Enhancement Section -->
-                        <div class="controls-section">
-                            <div class="section-title">Enhancement</div>
-                            <div class="control-group">
-                                <label class="control-label">
-                                    Auto Enhance
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="auto-enhance-toggle" checked>
-                                        <span class="slider"></span>
-                                    </label>
-                                </label>
-                            </div>
-                            <div class="control-group">
-                                <label class="control-label">Gamma Correction</label>
-                                <input type="range" class="range-input" id="gamma-slider"
-                                       min="0.5" max="2" step="0.1" value="0.8">
-                                <div class="range-value" id="gamma-value">0.8</div>
-                            </div>
-                            <div class="control-group">
-                                <label class="control-label">
-                                    CLAHE (Contrast Enhancement)
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="clahe-toggle" checked>
-                                        <span class="slider"></span>
-                                    </label>
-                                </label>
-                            </div>
-                            <div class="control-group">
-                                <label class="control-label">CLAHE Intensity</label>
-                                <input type="range" class="range-input" id="clahe-slider"
-                                       min="1" max="6" step="0.5" value="3">
-                                <div class="range-value" id="clahe-value">3.0</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Control Buttons -->
-                        <div class="controls-section">
-                            <div class="control-buttons">
-                                <button class="btn primary" id="apply-settings">Apply</button>
-                                <button class="btn danger" id="reset-settings">Reset</button>
+                            <div class="zone-row back" id="back-zones">
+                                <!-- B1-B5 zones will be populated here -->
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="zones-grid">
-                    <div class="panel-header">Parking Zones</div>
-                    <div class="zone-row" id="front-zones">
-                        <!-- Front row zones (A-series) will be populated here -->
+                </section>
+
+                <!-- Statistics -->
+                <section class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Detection Statistics</span>
                     </div>
-                    <div class="zone-row" id="back-zones">
-                        <!-- Back row zones (B-series) will be populated here -->
+                    <div class="panel-content">
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-label">Easy Zones</span>
+                                <span class="stat-value status-healthy" id="easy-zones">7</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Hard Zones</span>
+                                <span class="stat-value status-warning" id="hard-zones">5</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Processing FPS</span>
+                                <span class="stat-value" id="processing-fps">0.2</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Avg Confidence</span>
+                                <span class="stat-value" id="avg-confidence">85%</span>
+                            </div>
+                        </div>
+                        <div class="last-update">
+                            Last update: <span id="last-update">Never</span>
+                        </div>
                     </div>
-                </div>
-                
-                <div class="stats-panel">
-                    <div class="panel-header">Detection Stats</div>
-                    <div class="stat-item">
-                        <span>Easy Zones</span>
-                        <span class="stat-value status-healthy" id="easy-zones">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Hard Zones</span>
-                        <span class="stat-value status-warning" id="hard-zones">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Processing FPS</span>
-                        <span class="stat-value" id="processing-fps">0.2</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Snapshot Interval</span>
-                        <span class="stat-value" id="snapshot-interval">5s</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Device</span>
-                        <span class="stat-value" id="device-info">--</span>
-                    </div>
-                    <div class="stat-item">
-                        <span>Last Processing</span>
-                        <span class="stat-value" id="processing-time">--</span>
-                    </div>
-                    <div class="last-update">
-                        Last update: <span id="last-update">Never</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+                </section>
+            </aside>
+        </main>
     </div>
 
     <script>
         class ParkingDashboard {
             constructor() {
                 this.refreshInterval = 5000; // 5 seconds
-                this.lastUpdateEpoch = 0;
-                this.currentPreset = 'custom';
-                this.pendingChanges = false;
-                this.nextSnapshotTime = 0;
-                this.snapshotInterval = 5;
+                this.imageFitMode = 'contain'; // contain, cover, fill
+                this.isAutoRefreshing = true;
+                this.lastUpdateTime = 0;
+                
                 this.init();
             }
-            
-            init() {
-                this.setupCameraControls();
-                this.loadCameraSettings();
+
+            async init() {
+                this.setupEventListeners();
                 this.startAutoRefresh();
-                this.startCountdownTimer();
-                this.fetchData(); // Initial load
+                await this.fetchInitialData();
             }
-            
-            setupCameraControls() {
-                // Toggle camera controls panel
-                const toggle = document.getElementById('camera-controls-toggle');
-                const content = document.getElementById('camera-controls-content');
-                
-                // Camera controls collapsed by default since auto-adjustment is enabled
-                content.style.display = 'none';
-                
-                toggle.addEventListener('change', (e) => {
-                    content.style.display = e.target.checked ? 'block' : 'none';
+
+            setupEventListeners() {
+                // Image controls
+                const fitToggle = document.getElementById('fit-toggle');
+                const refreshBtn = document.getElementById('refresh-btn');
+                const snapshotImage = document.getElementById('snapshot-image');
+
+                fitToggle?.addEventListener('click', () => this.toggleImageFit());
+                refreshBtn?.addEventListener('click', () => this.refreshSnapshot());
+                snapshotImage?.addEventListener('click', () => this.toggleImageFit());
+
+                // Camera controls toggle
+                const cameraToggle = document.getElementById('camera-toggle');
+                const controlsContent = document.getElementById('controls-content');
+
+                cameraToggle?.addEventListener('change', (e) => {
+                    controlsContent?.classList.toggle('expanded', e.target.checked);
                 });
-                
-                // Setup range input event listeners
-                const sliders = [
-                    'exposure', 'brightness', 'gain', 'contrast', 
-                    'saturation', 'sharpness', 'gamma', 'clahe'
-                ];
-                
-                sliders.forEach(name => {
-                    const slider = document.getElementById(`${name}-slider`);
-                    const valueDisplay = document.getElementById(`${name}-value`);
-                    
-                    slider.addEventListener('input', (e) => {
-                        const value = parseFloat(e.target.value);
-                        valueDisplay.textContent = value.toFixed(2);
-                        this.pendingChanges = true;
-                        this.currentPreset = 'custom';
-                        this.updatePresetButtons();
-                    });
-                });
-                
-                // Setup toggle switches
-                const toggles = ['auto-enhance', 'clahe'];
-                toggles.forEach(name => {
-                    const toggle = document.getElementById(`${name}-toggle`);
-                    toggle.addEventListener('change', () => {
-                        this.pendingChanges = true;
-                        this.currentPreset = 'custom';
-                        this.updatePresetButtons();
-                    });
-                });
-                
-                // Setup preset buttons
-                const presetButtons = document.querySelectorAll('.preset-btn');
-                presetButtons.forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        const preset = btn.dataset.preset;
-                        this.applyPreset(preset);
-                    });
-                });
-                
-                // Setup control buttons
-                document.getElementById('apply-settings').addEventListener('click', () => {
-                    this.applySettings();
-                });
-                
-                document.getElementById('reset-settings').addEventListener('click', () => {
-                    this.resetSettings();
-                });
-            }
-            
-            async loadCameraSettings() {
-                try {
-                    const response = await fetch('/api/camera/settings');
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    
-                    const data = await response.json();
-                    const settings = data.camera_settings;
-                    
-                    // Update UI with current settings
-                    document.getElementById('exposure-slider').value = settings.exposure.value;
-                    document.getElementById('exposure-value').textContent = settings.exposure.value.toFixed(2);
-                    
-                    document.getElementById('brightness-slider').value = settings.image_quality.brightness;
-                    document.getElementById('brightness-value').textContent = settings.image_quality.brightness.toFixed(2);
-                    
-                    document.getElementById('gain-slider').value = settings.image_quality.gain;
-                    document.getElementById('gain-value').textContent = settings.image_quality.gain.toFixed(2);
-                    
-                    document.getElementById('contrast-slider').value = settings.image_quality.contrast;
-                    document.getElementById('contrast-value').textContent = settings.image_quality.contrast.toFixed(2);
-                    
-                    document.getElementById('saturation-slider').value = settings.image_quality.saturation;
-                    document.getElementById('saturation-value').textContent = settings.image_quality.saturation.toFixed(2);
-                    
-                    document.getElementById('sharpness-slider').value = settings.image_quality.sharpness;
-                    document.getElementById('sharpness-value').textContent = settings.image_quality.sharpness.toFixed(2);
-                    
-                    document.getElementById('gamma-slider').value = settings.enhancement.gamma_correction;
-                    document.getElementById('gamma-value').textContent = settings.enhancement.gamma_correction.toFixed(1);
-                    
-                    document.getElementById('clahe-slider').value = settings.enhancement.clahe_clip_limit;
-                    document.getElementById('clahe-value').textContent = settings.enhancement.clahe_clip_limit.toFixed(1);
-                    
-                    document.getElementById('auto-enhance-toggle').checked = settings.enhancement.auto_enhance;
-                    document.getElementById('clahe-toggle').checked = settings.enhancement.clahe_enabled;
-                    
-                    this.pendingChanges = false;
-                    
-                } catch (error) {
-                    console.error('Failed to load camera settings:', error);
-                }
-            }
-            
-            async applyPreset(presetName) {
-                try {
-                    const response = await fetch(`/api/camera/presets/${presetName}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    
-                    const result = await response.json();
-                    if (result.success) {
-                        this.currentPreset = presetName;
-                        this.updatePresetButtons();
-                        await this.loadCameraSettings();
-                        this.showMessage(`Applied preset: ${presetName}`, 'success');
-                    } else {
-                        this.showMessage(`Failed to apply preset: ${result.message}`, 'error');
-                    }
-                    
-                } catch (error) {
-                    console.error('Failed to apply preset:', error);
-                    this.showMessage('Failed to apply preset', 'error');
-                }
-            }
-            
-            async applySettings() {
-                try {
-                    const settings = {
-                        exposure: {
-                            value: parseFloat(document.getElementById('exposure-slider').value)
-                        },
-                        image_quality: {
-                            brightness: parseFloat(document.getElementById('brightness-slider').value),
-                            gain: parseFloat(document.getElementById('gain-slider').value),
-                            contrast: parseFloat(document.getElementById('contrast-slider').value),
-                            saturation: parseFloat(document.getElementById('saturation-slider').value),
-                            sharpness: parseFloat(document.getElementById('sharpness-slider').value)
-                        },
-                        enhancement: {
-                            auto_enhance: document.getElementById('auto-enhance-toggle').checked,
-                            gamma_correction: parseFloat(document.getElementById('gamma-slider').value),
-                            clahe_enabled: document.getElementById('clahe-toggle').checked,
-                            clahe_clip_limit: parseFloat(document.getElementById('clahe-slider').value)
-                        }
-                    };
-                    
-                    const response = await fetch('/api/camera/settings', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(settings)
-                    });
-                    
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    
-                    const result = await response.json();
-                    if (result.success) {
-                        this.pendingChanges = false;
-                        this.showMessage('Camera settings applied successfully', 'success');
-                    } else {
-                        this.showMessage(`Failed to apply settings: ${result.message}`, 'error');
-                    }
-                    
-                } catch (error) {
-                    console.error('Failed to apply settings:', error);
-                    this.showMessage('Failed to apply camera settings', 'error');
-                }
-            }
-            
-            async resetSettings() {
-                try {
-                    const response = await fetch('/api/camera/reset', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    
-                    const result = await response.json();
-                    if (result.success) {
-                        this.currentPreset = 'outdoor_normal'; // Default preset
-                        this.updatePresetButtons();
-                        await this.loadCameraSettings();
-                        this.showMessage('Camera settings reset to defaults', 'success');
-                    } else {
-                        this.showMessage(`Failed to reset: ${result.message}`, 'error');
-                    }
-                    
-                } catch (error) {
-                    console.error('Failed to reset settings:', error);
-                    this.showMessage('Failed to reset camera settings', 'error');
-                }
-            }
-            
-            updatePresetButtons() {
-                const buttons = document.querySelectorAll('.preset-btn');
-                buttons.forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.dataset.preset === this.currentPreset) {
-                        btn.classList.add('active');
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'r' || e.key === 'R') {
+                        e.preventDefault();
+                        this.refreshSnapshot();
+                    } else if (e.key === 'f' || e.key === 'F') {
+                        e.preventDefault();
+                        this.toggleImageFit();
                     }
                 });
             }
-            
-            showMessage(message, type) {
-                // Create a temporary message element
-                const messageEl = document.createElement('div');
-                messageEl.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    padding: 12px 20px;
-                    border-radius: 5px;
-                    color: white;
-                    font-weight: bold;
-                    z-index: 1000;
-                    transition: opacity 0.3s ease;
-                    background: ${type === 'success' ? '#00ff88' : '#ff4444'};
-                    color: ${type === 'success' ? '#000' : '#fff'};
-                `;
-                messageEl.textContent = message;
-                
-                document.body.appendChild(messageEl);
-                
-                // Auto remove after 3 seconds
-                setTimeout(() => {
-                    messageEl.style.opacity = '0';
-                    setTimeout(() => {
-                        if (messageEl.parentNode) {
-                            messageEl.parentNode.removeChild(messageEl);
-                        }
-                    }, 300);
-                }, 3000);
-            }
-            
+
             startAutoRefresh() {
                 setInterval(() => {
-                    this.fetchData();
+                    if (this.isAutoRefreshing) {
+                        this.fetchData();
+                    }
                 }, this.refreshInterval);
             }
-            
-            startCountdownTimer() {
-                // Update countdown every second for smooth UX
-                setInterval(() => {
-                    this.updateCountdownDisplay();
-                }, 1000);
-            }
-            
-            updateCountdownDisplay() {
-                const now = Date.now() / 1000;
-                const timeUntilNext = Math.max(0, this.nextSnapshotTime - now);
-                
-                const countdownElement = document.getElementById('next-snapshot');
-                if (timeUntilNext > 0) {
-                    if (timeUntilNext > 1) {
-                        countdownElement.textContent = timeUntilNext.toFixed(1) + 's';
-                        countdownElement.style.color = '#fff';
-                    } else {
-                        countdownElement.textContent = 'Processing...';
-                        countdownElement.style.color = '#00ff88';
-                    }
-                } else {
-                    countdownElement.textContent = 'Ready';
-                    countdownElement.style.color = '#ffaa00';
-                }
-            }
-            
-            async fetchData() {
+
+            async fetchInitialData() {
+                this.setRefreshIndicator(true);
                 try {
-                    this.setRefreshIndicator(true);
-                    
-                    // Fetch detection data and status in parallel
-                    const [detectionResponse, statusResponse] = await Promise.all([
-                        fetch('/api/detection'),
-                        fetch('/api/status')
+                    await Promise.all([
+                        this.updateSnapshot(),
+                        this.updateZones(),
+                        this.updateStats()
                     ]);
-                    
-                    if (!detectionResponse.ok) throw new Error(`Detection API HTTP ${detectionResponse.status}`);
-                    if (!statusResponse.ok) throw new Error(`Status API HTTP ${statusResponse.status}`);
-                    
-                    const detectionData = await detectionResponse.json();
-                    const statusData = await statusResponse.json();
-                    
-                    // Combine data for comprehensive update
-                    const combinedData = { ...detectionData, ...statusData };
-                    
-                    // Always update dashboard content (snapshot, stats, zones)
-                    await this.updateDashboard(combinedData);
-                    
-                    // Update epoch tracking for future optimizations
-                    if (detectionData.last_update_epoch > this.lastUpdateEpoch) {
-                        this.lastUpdateEpoch = detectionData.last_update_epoch;
-                    }
-                    
-                    this.setRefreshIndicator(false);
+                    this.setServiceStatus('healthy');
                 } catch (error) {
-                    console.error('Failed to fetch parking data:', error);
+                    console.error('Failed to fetch initial data:', error);
                     this.setServiceStatus('error');
+                } finally {
                     this.setRefreshIndicator(false);
                 }
             }
-            
+
+            async fetchData() {
+                this.setRefreshIndicator(true);
+                try {
+                    const [detectionResponse, statusResponse] = await Promise.all([
+                        fetch('/api/detection').catch(() => null),
+                        fetch('/api/status').catch(() => null)
+                    ]);
+
+                    let detectionData = {};
+                    let statusData = {};
+
+                    if (detectionResponse?.ok) {
+                        detectionData = await detectionResponse.json();
+                    }
+
+                    if (statusResponse?.ok) {
+                        statusData = await statusResponse.json();
+                    }
+
+                    await this.updateDashboard({ ...detectionData, ...statusData });
+                    this.setServiceStatus('healthy');
+                    
+                } catch (error) {
+                    console.error('Failed to fetch data:', error);
+                    this.setServiceStatus('error');
+                } finally {
+                    this.setRefreshIndicator(false);
+                }
+            }
+
             async updateDashboard(data) {
-                // Update status bar
-                this.updateStatusBar(data);
-                
-                // Update snapshot image
-                await this.updateSnapshot();
-                
-                // Update zones
-                await this.updateZones();
-                
-                // Update stats
-                this.updateStats(data);
-                
-                // Update timestamp
-                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-                
-                this.setServiceStatus('healthy');
+                await Promise.all([
+                    this.updateStatusBar(data),
+                    this.updateSnapshot(),
+                    this.updateZones(),
+                    this.updateStats(data)
+                ]);
+
+                this.updateLastUpdateTime();
             }
-            
+
             updateStatusBar(data) {
-                const totalSpaces = data.total_spaces || 0;
+                const totalSpaces = data.total_spaces || 12;
+                const occupiedSpaces = data.occupied_spaces || 0;
+                const availableSpaces = totalSpaces - occupiedSpaces;
+                const occupancyRate = totalSpaces > 0 ? Math.round((occupiedSpaces / totalSpaces) * 100) : 0;
+
                 document.getElementById('total-spaces').textContent = totalSpaces;
-                document.getElementById('occupied-spaces').textContent = data.occupied_spaces || 0;
-                document.getElementById('available-spaces').textContent = 
-                    totalSpaces - (data.occupied_spaces || 0);
-                document.getElementById('occupancy-rate').textContent = 
-                    Math.round((data.occupancy_rate || 0) * 100) + '%';
+                document.getElementById('occupied-spaces').textContent = occupiedSpaces;
+                document.getElementById('available-spaces').textContent = availableSpaces;
+                document.getElementById('occupancy-rate').textContent = occupancyRate + '%';
+
+                // Update model status
+                const modelStatus = data.model_loaded ? (data.model_name || 'Loaded') : 'Loading';
+                const modelElement = document.getElementById('model-status');
+                modelElement.textContent = modelStatus;
+                modelElement.className = 'status-value ' + (data.model_loaded ? 'status-healthy' : 'status-warning');
+
+                // Update occupancy rate color
+                const occupancyElement = document.getElementById('occupancy-rate');
+                occupancyElement.className = 'status-value';
+                if (occupancyRate >= 80) {
+                    occupancyElement.classList.add('status-error');
+                } else if (occupancyRate >= 60) {
+                    occupancyElement.classList.add('status-warning');
+                } else {
+                    occupancyElement.classList.add('status-healthy');
+                }
             }
-            
+
             async updateSnapshot() {
                 try {
                     const timestamp = Date.now();
                     const imageUrl = `/api/snapshot?t=${timestamp}`;
                     
                     const img = document.getElementById('snapshot-image');
-                    const noSnapshot = document.getElementById('no-snapshot');
+                    const noImage = document.getElementById('no-image');
+
+                    // Test if image loads
+                    const testImg = new Image();
+                    testImg.onload = () => {
+                        img.src = imageUrl;
+                        img.style.objectFit = this.imageFitMode;
+                        img.style.display = 'block';
+                        img.classList.add('fade-in');
+                        noImage.style.display = 'none';
+                    };
                     
-                    // Create a promise to handle image loading
-                    const imageLoaded = new Promise((resolve, reject) => {
-                        const tempImg = new Image();
-                        tempImg.onload = () => resolve(imageUrl);
-                        tempImg.onerror = () => reject(new Error('Failed to load image'));
-                        tempImg.src = imageUrl;
-                    });
-                    
-                    await imageLoaded;
-                    
-                    img.src = imageUrl;
-                    img.style.display = 'block';
-                    noSnapshot.style.display = 'none';
-                    
+                    testImg.onerror = () => {
+                        img.style.display = 'none';
+                        noImage.style.display = 'flex';
+                        noImage.innerHTML = `
+                            <div style="color: #ff4444; font-size: 2rem; margin-bottom: 16px;">⚠</div>
+                            <span>Camera unavailable</span>
+                            <small style="color: var(--text-muted); margin-top: 8px;">Retrying in ${this.refreshInterval / 1000}s...</small>
+                        `;
+                    };
+
+                    testImg.src = imageUrl;
+
                 } catch (error) {
-                    console.error('Failed to load snapshot:', error);
-                    const img = document.getElementById('snapshot-image');
-                    const noSnapshot = document.getElementById('no-snapshot');
-                    
-                    img.style.display = 'none';
-                    noSnapshot.style.display = 'block';
-                    noSnapshot.textContent = 'No snapshot available';
+                    console.error('Failed to update snapshot:', error);
                 }
             }
-            
+
             async updateZones() {
                 try {
                     const response = await fetch('/api/zones');
+                    if (!response.ok) {
+                        throw new Error(`Zones API error: ${response.status}`);
+                    }
+
                     const data = await response.json();
                     
-                    const frontZones = data.zones.filter(z => z.name.startsWith('A'));
-                    const backZones = data.zones.filter(z => z.name.startsWith('B'));
+                    if (!data.zones || !Array.isArray(data.zones)) {
+                        console.warn('Invalid zones data:', data);
+                        return;
+                    }
+
+                    // Separate and sort zones
+                    const frontZones = data.zones
+                        .filter(z => z.name.startsWith('A'))
+                        .sort((a, b) => parseInt(a.name.slice(1)) - parseInt(b.name.slice(1)));
                     
+                    const backZones = data.zones
+                        .filter(z => z.name.startsWith('B'))
+                        .sort((a, b) => parseInt(a.name.slice(1)) - parseInt(b.name.slice(1)));
+
                     this.renderZones('front-zones', frontZones);
                     this.renderZones('back-zones', backZones);
-                    
+
                 } catch (error) {
-                    console.error('Failed to fetch zones:', error);
+                    console.error('Failed to update zones:', error);
+                    this.showZonesError(error.message);
                 }
             }
-            
+
             renderZones(containerId, zones) {
                 const container = document.getElementById(containerId);
+                if (!container) return;
+
                 container.innerHTML = '';
-                
-                zones.forEach(zone => {
+
+                zones.forEach((zone, index) => {
                     const zoneCard = document.createElement('div');
                     zoneCard.className = 'zone-card';
-                    
-                    // Determine zone difficulty from name (since API doesn't return detection_difficulty)
-                    const isHardZone = zone.name.startsWith('B'); // B-series are hard zones
-                    
+                    zoneCard.dataset.zone = zone.name;
+
+                    // Determine zone status
+                    let statusClass = 'available';
                     if (zone.occupied) {
-                        zoneCard.classList.add('occupied');
-                    } else if (isHardZone) {
-                        zoneCard.classList.add('hard');
-                    } else {
-                        zoneCard.classList.add('available');
+                        statusClass = 'occupied';
+                    } else if (zone.detection_difficulty === 'hard' || zone.name.startsWith('B')) {
+                        statusClass = 'hard';
                     }
-                    
-                    // Show confidence for any zone that has been detected recently
-                    const showConfidence = zone.confidence > 0 || zone.last_detection;
-                    
+
+                    zoneCard.classList.add(statusClass);
+
+                    // Zone content
+                    const confidence = zone.confidence ? Math.round(zone.confidence * 100) : 0;
                     zoneCard.innerHTML = `
                         <div class="zone-name">${zone.name}</div>
                         <div class="zone-status">${zone.occupied ? 'Occupied' : 'Available'}</div>
-                        ${showConfidence ? `<div class="zone-confidence">${Math.round(zone.confidence * 100)}%</div>` : ''}
-                        ${isHardZone ? `<div style="font-size: 0.6rem; color: #ffaa00;">Hard</div>` : ''}
+                        ${confidence > 0 ? `<div class="zone-confidence">${confidence}%</div>` : ''}
                     `;
-                    
+
+                    // Add animation delay
+                    zoneCard.style.animationDelay = `${index * 0.05}s`;
+                    zoneCard.classList.add('slide-in');
+
                     container.appendChild(zoneCard);
                 });
             }
-            
-            updateStats(data) {
-                document.getElementById('processing-fps').textContent = 
-                    (data.processing_fps || 0.2).toFixed(1);
-                document.getElementById('snapshot-interval').textContent = 
-                    (data.snapshot_interval || 5) + 's';
-                document.getElementById('easy-zones').textContent = 
-                    data.easy_zones_count || 0;
-                document.getElementById('hard-zones').textContent = 
-                    data.hard_zones_count || 0;
+
+            showZonesError(message) {
+                const frontContainer = document.getElementById('front-zones');
+                const backContainer = document.getElementById('back-zones');
                 
-                // Update model status - show model name if loaded
-                const modelStatus = data.model_loaded ? 
-                    (data.model_name || 'Loaded') : 'Loading';
-                document.getElementById('model-status').textContent = modelStatus;
-                document.getElementById('model-status').className = 
-                    data.model_loaded ? 'status-value status-healthy' : 'status-value status-warning';
+                const errorHtml = `<div class="error-message">Failed to load zones: ${message}</div>`;
                 
-                // Update device info
-                document.getElementById('device-info').textContent = data.device || '--';
-                
-                // Update processing time if available
-                if (data.last_processing_time) {
-                    document.getElementById('processing-time').textContent = 
-                        (data.last_processing_time * 1000).toFixed(0) + 'ms';
-                }
-                
-                // Update next snapshot countdown with real-time tracking
-                if (data.next_snapshot_in !== undefined) {
-                    const serverTime = data.server_time_epoch || (Date.now() / 1000);
-                    this.nextSnapshotTime = serverTime + Math.max(0, data.next_snapshot_in);
-                    this.snapshotInterval = data.snapshot_interval || 5;
-                }
-                
-                // Check for stale data and update visual indicators
-                this.checkDataStaleness(data);
+                if (frontContainer) frontContainer.innerHTML = errorHtml;
+                if (backContainer) backContainer.innerHTML = '';
             }
-            
+
+            async updateStats(data = {}) {
+                try {
+                    // Update processing stats
+                    document.getElementById('processing-fps').textContent = (data.processing_fps || 0.2).toFixed(1);
+                    document.getElementById('easy-zones').textContent = data.easy_zones_count || 7;
+                    document.getElementById('hard-zones').textContent = data.hard_zones_count || 5;
+
+                    // Calculate average confidence if zones data is available
+                    if (data.zones && Array.isArray(data.zones)) {
+                        const validConfidences = data.zones
+                            .filter(z => z.confidence > 0)
+                            .map(z => z.confidence);
+                        
+                        const avgConfidence = validConfidences.length > 0
+                            ? Math.round(validConfidences.reduce((a, b) => a + b, 0) / validConfidences.length * 100)
+                            : 0;
+                        
+                        document.getElementById('avg-confidence').textContent = avgConfidence + '%';
+                    }
+
+                } catch (error) {
+                    console.error('Failed to update stats:', error);
+                }
+            }
+
+            toggleImageFit() {
+                const modes = ['contain', 'cover', 'fill'];
+                const currentIndex = modes.indexOf(this.imageFitMode);
+                this.imageFitMode = modes[(currentIndex + 1) % modes.length];
+
+                const img = document.getElementById('snapshot-image');
+                if (img) {
+                    img.style.objectFit = this.imageFitMode;
+                    img.classList.add('fade-in');
+                }
+
+                // Update button title
+                const fitBtn = document.getElementById('fit-toggle');
+                if (fitBtn) {
+                    const modeNames = { contain: 'Fit', cover: 'Fill', fill: 'Stretch' };
+                    fitBtn.title = `Current: ${modeNames[this.imageFitMode]}`;
+                }
+            }
+
+            async refreshSnapshot() {
+                this.setRefreshIndicator(true);
+                await this.updateSnapshot();
+                this.setRefreshIndicator(false);
+            }
+
             setServiceStatus(status) {
                 const statusElement = document.getElementById('service-status');
+                if (!statusElement) return;
+
                 statusElement.className = 'status-value';
                 
-                switch(status) {
+                switch (status) {
                     case 'healthy':
                         statusElement.classList.add('status-healthy');
                         statusElement.textContent = 'Online';
@@ -1160,65 +1039,37 @@
                         break;
                     case 'error':
                         statusElement.classList.add('status-error');
-                        statusElement.textContent = 'Error';
+                        statusElement.textContent = 'Offline';
                         break;
                 }
             }
-            
+
             setRefreshIndicator(loading) {
                 const indicator = document.getElementById('refresh-indicator');
-                if (loading) {
-                    indicator.classList.add('loading');
-                } else {
-                    indicator.classList.remove('loading');
-                }
+                if (!indicator) return;
+
+                indicator.classList.toggle('loading', loading);
             }
-            
-            checkDataStaleness(data) {
-                const currentTime = Date.now() / 1000;
-                const lastUpdateTime = data.last_update_epoch || 0;
-                const timeSinceUpdate = currentTime - lastUpdateTime;
-                const snapshotInterval = data.snapshot_interval || 5;
-                
-                // Remove existing staleness classes
-                document.body.classList.remove('data-warning', 'data-stale');
-                
-                // Check staleness levels
-                if (timeSinceUpdate > snapshotInterval * 6) { // 30+ seconds for 5s interval
-                    document.body.classList.add('data-stale');
-                    this.showStaleMessage('Critical: Data is very stale (30+ seconds old)');
-                } else if (timeSinceUpdate > snapshotInterval * 2) { // 10+ seconds for 5s interval  
-                    document.body.classList.add('data-warning');
-                    this.showStaleMessage(`Warning: Data is stale (${timeSinceUpdate.toFixed(0)}s old)`);
-                } else {
-                    this.hideStaleMessage();
-                }
-            }
-            
-            showStaleMessage(message) {
-                let staleAlert = document.getElementById('stale-alert');
-                if (!staleAlert) {
-                    staleAlert = document.createElement('div');
-                    staleAlert.id = 'stale-alert';
-                    staleAlert.className = 'stale-alert';
-                    document.querySelector('.header').appendChild(staleAlert);
-                }
-                staleAlert.textContent = message;
-                staleAlert.style.display = 'block';
-            }
-            
-            hideStaleMessage() {
-                const staleAlert = document.getElementById('stale-alert');
-                if (staleAlert) {
-                    staleAlert.style.display = 'none';
+
+            updateLastUpdateTime() {
+                const lastUpdateElement = document.getElementById('last-update');
+                if (lastUpdateElement) {
+                    lastUpdateElement.textContent = new Date().toLocaleTimeString();
                 }
             }
         }
-        
-        // Initialize dashboard when page loads
+
+        // Initialize dashboard when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             new ParkingDashboard();
         });
+
+        // Add service worker for offline functionality (optional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Service worker registration can be added here if needed
+            });
+        }
     </script>
 </body>
 </html>
