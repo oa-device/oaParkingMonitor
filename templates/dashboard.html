@@ -181,7 +181,7 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            transition: opacity 0.4s ease-in-out, transform 0.3s ease;
+            /* No transition - instant updates */
             cursor: pointer;
             opacity: 0;
         }
@@ -356,7 +356,7 @@
             padding: var(--spacing-sm);
             text-align: center;
             border: 2px solid transparent;
-            transition: var(--transition);
+            /* No transition - instant updates */
             width: 100%;
             height: 70px;
             display: flex;
@@ -387,10 +387,8 @@
         .zone-card:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-            transition: transform 0.2s ease, 
-                        background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                        border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                        box-shadow 0.2s ease;
+            /* Only animate hover effects, not status changes */
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
         .zone-name {
@@ -659,11 +657,7 @@
         }
 
         /* Smooth transitions for zones */
-        .zone-card {
-            transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                        border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                        box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+        /* No transitions during refresh - instant updates */
 
         /* Accessibility */
         button:focus-visible,
@@ -686,24 +680,7 @@
             }
         }
 
-        /* Animations */
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .slide-in {
-            animation: slideIn 0.3s ease-out;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
+        /* Animations disabled for instant refresh updates */
     </style>
 </head>
 <body>
@@ -1023,35 +1000,16 @@
                     // Use preloader for smooth transitions
                     return new Promise((resolve) => {
                         this.imagePreloader.onload = () => {
-                            // Only fade out if image is currently visible (avoid jarring first load)
-                            const isFirstLoad = img.style.display === 'none' || !img.classList.contains('loaded');
+                            // Instant update without any fade animations
+                            img.src = this.imagePreloader.src;
+                            img.style.objectFit = this.imageFitMode;
+                            img.style.display = 'block';
+                            img.style.opacity = '1';
+                            img.classList.add('loaded');
+                            noImage.style.display = 'none';
                             
-                            if (!isFirstLoad) {
-                                img.classList.remove('loaded');
-                            }
-                            
-                            const updateImage = () => {
-                                img.src = this.imagePreloader.src;
-                                img.style.objectFit = this.imageFitMode;
-                                img.style.display = 'block';
-                                noImage.style.display = 'none';
-                                
-                                // Remove loading state
-                                imageContainer?.classList.remove('image-loading');
-                                
-                                // Fade in new image
-                                requestAnimationFrame(() => {
-                                    img.classList.add('loaded');
-                                });
-                            };
-
-                            if (isFirstLoad) {
-                                // First load - show immediately
-                                updateImage();
-                            } else {
-                                // Subsequent updates - brief pause for smooth transition
-                                setTimeout(updateImage, 150);
-                            }
+                            // Remove loading state
+                            imageContainer?.classList.remove('image-loading');
                             
                             resolve();
                         };
@@ -1167,11 +1125,7 @@
                         zoneCard.innerHTML = newContent;
                     }
 
-                    // Add slide-in animation for new cards only
-                    if (isNewCard) {
-                        zoneCard.style.animationDelay = `${index * 0.05}s`;
-                        zoneCard.classList.add('slide-in');
-                    }
+                    // No animations - instant display
 
                     fragment.appendChild(zoneCard);
                 });
