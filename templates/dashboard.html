@@ -411,6 +411,33 @@
             color: #888;
         }
         
+        /* Stale data indicators */
+        .data-warning .dashboard-panel {
+            border: 2px solid #ffaa00;
+            box-shadow: 0 0 10px rgba(255, 170, 0, 0.3);
+        }
+        
+        .data-stale .dashboard-panel {
+            border: 2px solid #ff4444;
+            box-shadow: 0 0 10px rgba(255, 68, 68, 0.3);
+        }
+        
+        .stale-alert {
+            background: rgba(255, 68, 68, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-left: auto;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+        
+        .data-warning .stale-alert {
+            background: rgba(255, 170, 0, 0.9);
+        }
+        
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -424,6 +451,11 @@
             .zone-row {
                 grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
                 gap: 8px;
+            }
+            
+            .stale-alert {
+                font-size: 0.8rem;
+                padding: 8px 12px;
             }
         }
     </style>
@@ -949,9 +981,11 @@
                     // Combine data for comprehensive update
                     const combinedData = { ...detectionData, ...statusData };
                     
-                    // Only update if new data available
+                    // Always update dashboard content (snapshot, stats, zones)
+                    await this.updateDashboard(combinedData);
+                    
+                    // Update epoch tracking for future optimizations
                     if (detectionData.last_update_epoch > this.lastUpdateEpoch) {
-                        await this.updateDashboard(combinedData);
                         this.lastUpdateEpoch = detectionData.last_update_epoch;
                     }
                     
@@ -1084,8 +1118,9 @@
                 document.getElementById('hard-zones').textContent = 
                     data.hard_zones_count || 0;
                 
-                // Update model status
-                const modelStatus = data.model_loaded ? 'Loaded' : 'Loading';
+                // Update model status - show model name if loaded
+                const modelStatus = data.model_loaded ? 
+                    (data.model_name || 'Loaded') : 'Loading';
                 document.getElementById('model-status').textContent = modelStatus;
                 document.getElementById('model-status').className = 
                     data.model_loaded ? 'status-value status-healthy' : 'status-value status-warning';
@@ -1105,6 +1140,9 @@
                     this.nextSnapshotTime = serverTime + Math.max(0, data.next_snapshot_in);
                     this.snapshotInterval = data.snapshot_interval || 5;
                 }
+                
+                // Check for stale data and update visual indicators
+                this.checkDataStaleness(data);
             }
             
             setServiceStatus(status) {
@@ -1133,6 +1171,46 @@
                     indicator.classList.add('loading');
                 } else {
                     indicator.classList.remove('loading');
+                }
+            }
+            
+            checkDataStaleness(data) {
+                const currentTime = Date.now() / 1000;
+                const lastUpdateTime = data.last_update_epoch || 0;
+                const timeSinceUpdate = currentTime - lastUpdateTime;
+                const snapshotInterval = data.snapshot_interval || 5;
+                
+                // Remove existing staleness classes
+                document.body.classList.remove('data-warning', 'data-stale');
+                
+                // Check staleness levels
+                if (timeSinceUpdate > snapshotInterval * 6) { // 30+ seconds for 5s interval
+                    document.body.classList.add('data-stale');
+                    this.showStaleMessage('Critical: Data is very stale (30+ seconds old)');
+                } else if (timeSinceUpdate > snapshotInterval * 2) { // 10+ seconds for 5s interval  
+                    document.body.classList.add('data-warning');
+                    this.showStaleMessage(`Warning: Data is stale (${timeSinceUpdate.toFixed(0)}s old)`);
+                } else {
+                    this.hideStaleMessage();
+                }
+            }
+            
+            showStaleMessage(message) {
+                let staleAlert = document.getElementById('stale-alert');
+                if (!staleAlert) {
+                    staleAlert = document.createElement('div');
+                    staleAlert.id = 'stale-alert';
+                    staleAlert.className = 'stale-alert';
+                    document.querySelector('.header').appendChild(staleAlert);
+                }
+                staleAlert.textContent = message;
+                staleAlert.style.display = 'block';
+            }
+            
+            hideStaleMessage() {
+                const staleAlert = document.getElementById('stale-alert');
+                if (staleAlert) {
+                    staleAlert.style.display = 'none';
                 }
             }
         }
