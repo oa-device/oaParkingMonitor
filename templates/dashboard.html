@@ -174,18 +174,60 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
         }
 
         .snapshot-image {
             width: 100%;
             height: 100%;
             object-fit: contain;
-            transition: var(--transition);
+            transition: opacity 0.4s ease-in-out, transform 0.3s ease;
             cursor: pointer;
+            opacity: 0;
+        }
+
+        .snapshot-image.loaded {
+            opacity: 1;
         }
 
         .snapshot-image.cover { object-fit: cover; }
         .snapshot-image.fill { object-fit: fill; }
+
+        /* Fullscreen styles */
+        .image-container.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.95);
+            aspect-ratio: unset;
+            min-height: unset;
+            cursor: zoom-out;
+        }
+
+        .image-container.fullscreen .snapshot-image {
+            cursor: zoom-out;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .fullscreen-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .fullscreen-backdrop.active {
+            opacity: 1;
+        }
 
         .image-overlay {
             position: absolute;
@@ -195,10 +237,17 @@
             gap: var(--spacing-sm);
             opacity: 0;
             transition: var(--transition);
+            z-index: 10;
         }
 
         .image-container:hover .image-overlay {
             opacity: 1;
+        }
+
+        .image-container.fullscreen .image-overlay {
+            opacity: 1;
+            top: var(--spacing-lg);
+            right: var(--spacing-lg);
         }
 
         .control-btn {
@@ -206,19 +255,30 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: var(--border-radius-sm);
             color: var(--text-primary);
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 16px;
             transition: var(--transition);
             backdrop-filter: blur(8px);
         }
 
         .control-btn:hover {
             background: rgba(0, 255, 136, 0.2);
+            border-color: var(--primary-green);
+            color: var(--primary-green);
+            transform: scale(1.05);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-btn.active {
+            background: rgba(0, 255, 136, 0.3);
             border-color: var(--primary-green);
             color: var(--primary-green);
         }
@@ -325,8 +385,12 @@
         }
 
         .zone-card:hover {
-            transform: translateY(-2px);
+            transform: translateY(-1px);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease, 
+                        background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        box-shadow 0.2s ease;
         }
 
         .zone-name {
@@ -539,6 +603,18 @@
             .stats-grid {
                 grid-template-columns: 1fr;
             }
+
+            .control-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 18px;
+            }
+
+            .image-container.fullscreen .image-overlay {
+                top: var(--spacing-xl);
+                right: var(--spacing-xl);
+                flex-direction: column;
+            }
         }
 
         /* Error States */
@@ -562,11 +638,52 @@
             margin: var(--spacing-md) 0;
         }
 
+        /* Loading states */
+        .image-loading {
+            position: relative;
+        }
+
+        .image-loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--primary-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 5;
+        }
+
+        /* Smooth transitions for zones */
+        .zone-card {
+            transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         /* Accessibility */
         button:focus-visible,
         .control-btn:focus-visible {
             outline: 2px solid var(--primary-green);
             outline-offset: 2px;
+        }
+
+        /* Reduced motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+            .snapshot-image,
+            .control-btn,
+            .zone-card {
+                transition: none;
+            }
+            
+            .fade-in,
+            .slide-in {
+                animation: none;
+            }
         }
 
         /* Animations */
@@ -637,7 +754,8 @@
                         <span>Loading parking view...</span>
                     </div>
                     <div class="image-overlay">
-                        <button class="control-btn" id="fit-toggle" title="Toggle image fit" aria-label="Toggle image fit">⌗</button>
+                        <button class="control-btn" id="fullscreen-btn" title="Toggle fullscreen" aria-label="Toggle fullscreen">⛶</button>
+                        <button class="control-btn" id="fit-toggle" title="Cycle fit mode (Contain)" aria-label="Cycle image fit mode">◱</button>
                         <button class="control-btn" id="refresh-btn" title="Refresh image" aria-label="Refresh image">↻</button>
                     </div>
                 </div>
@@ -723,6 +841,8 @@
                 this.imageFitMode = 'contain'; // contain, cover, fill
                 this.isAutoRefreshing = true;
                 this.lastUpdateTime = 0;
+                this.isFullscreen = false;
+                this.imagePreloader = new Image();
                 
                 this.init();
             }
@@ -737,11 +857,20 @@
                 // Image controls
                 const fitToggle = document.getElementById('fit-toggle');
                 const refreshBtn = document.getElementById('refresh-btn');
+                const fullscreenBtn = document.getElementById('fullscreen-btn');
                 const snapshotImage = document.getElementById('snapshot-image');
+                const imageContainer = document.querySelector('.image-container');
 
                 fitToggle?.addEventListener('click', () => this.toggleImageFit());
                 refreshBtn?.addEventListener('click', () => this.refreshSnapshot());
-                snapshotImage?.addEventListener('click', () => this.toggleImageFit());
+                fullscreenBtn?.addEventListener('click', () => this.toggleFullscreen());
+                
+                // Click image for fullscreen (but not when already in fullscreen)
+                imageContainer?.addEventListener('click', (e) => {
+                    if (e.target === snapshotImage && !this.isFullscreen) {
+                        this.toggleFullscreen();
+                    }
+                });
 
                 // Camera controls toggle
                 const cameraToggle = document.getElementById('camera-toggle');
@@ -759,6 +888,22 @@
                     } else if (e.key === 'f' || e.key === 'F') {
                         e.preventDefault();
                         this.toggleImageFit();
+                    } else if (e.key === 'Escape') {
+                        if (this.isFullscreen) {
+                            this.exitFullscreen();
+                        }
+                    } else if (e.key === ' ' || e.key === 'Enter') {
+                        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                            e.preventDefault();
+                            this.toggleFullscreen();
+                        }
+                    }
+                });
+
+                // Fullscreen change detection (browser native fullscreen)
+                document.addEventListener('fullscreenchange', () => {
+                    if (!document.fullscreenElement && this.isFullscreen) {
+                        this.exitFullscreen();
                     }
                 });
             }
@@ -772,13 +917,17 @@
             }
 
             async fetchInitialData() {
-                this.setRefreshIndicator(true);
+                this.setRefreshIndicator(true, true);
                 try {
+                    // Load snapshot first for better perceived performance
+                    await this.updateSnapshot();
+                    
+                    // Then load other data in parallel
                     await Promise.all([
-                        this.updateSnapshot(),
                         this.updateZones(),
                         this.updateStats()
                     ]);
+                    
                     this.setServiceStatus('healthy');
                 } catch (error) {
                     console.error('Failed to fetch initial data:', error);
@@ -789,7 +938,8 @@
             }
 
             async fetchData() {
-                this.setRefreshIndicator(true);
+                // Use more subtle refresh indicator for auto-refresh
+                this.setRefreshIndicator(true, false);
                 try {
                     const [detectionResponse, statusResponse] = await Promise.all([
                         fetch('/api/detection').catch(() => null),
@@ -865,31 +1015,68 @@
                     
                     const img = document.getElementById('snapshot-image');
                     const noImage = document.getElementById('no-image');
+                    const imageContainer = document.querySelector('.image-container');
 
-                    // Test if image loads
-                    const testImg = new Image();
-                    testImg.onload = () => {
-                        img.src = imageUrl;
-                        img.style.objectFit = this.imageFitMode;
-                        img.style.display = 'block';
-                        img.classList.add('fade-in');
-                        noImage.style.display = 'none';
-                    };
-                    
-                    testImg.onerror = () => {
-                        img.style.display = 'none';
-                        noImage.style.display = 'flex';
-                        noImage.innerHTML = `
-                            <div style="color: #ff4444; font-size: 2rem; margin-bottom: 16px;">⚠</div>
-                            <span>Camera unavailable</span>
-                            <small style="color: var(--text-muted); margin-top: 8px;">Retrying in ${this.refreshInterval / 1000}s...</small>
-                        `;
-                    };
+                    // Show subtle loading state
+                    imageContainer?.classList.add('image-loading');
 
-                    testImg.src = imageUrl;
+                    // Use preloader for smooth transitions
+                    return new Promise((resolve) => {
+                        this.imagePreloader.onload = () => {
+                            // Only fade out if image is currently visible (avoid jarring first load)
+                            const isFirstLoad = img.style.display === 'none' || !img.classList.contains('loaded');
+                            
+                            if (!isFirstLoad) {
+                                img.classList.remove('loaded');
+                            }
+                            
+                            const updateImage = () => {
+                                img.src = this.imagePreloader.src;
+                                img.style.objectFit = this.imageFitMode;
+                                img.style.display = 'block';
+                                noImage.style.display = 'none';
+                                
+                                // Remove loading state
+                                imageContainer?.classList.remove('image-loading');
+                                
+                                // Fade in new image
+                                requestAnimationFrame(() => {
+                                    img.classList.add('loaded');
+                                });
+                            };
+
+                            if (isFirstLoad) {
+                                // First load - show immediately
+                                updateImage();
+                            } else {
+                                // Subsequent updates - brief pause for smooth transition
+                                setTimeout(updateImage, 150);
+                            }
+                            
+                            resolve();
+                        };
+                        
+                        this.imagePreloader.onerror = () => {
+                            img.classList.remove('loaded');
+                            img.style.display = 'none';
+                            noImage.style.display = 'flex';
+                            imageContainer?.classList.remove('image-loading');
+                            
+                            noImage.innerHTML = `
+                                <div style="color: #ff4444; font-size: 2rem; margin-bottom: 16px;">⚠</div>
+                                <span>Camera unavailable</span>
+                                <small style="color: var(--text-muted); margin-top: 8px;">Retrying in ${this.refreshInterval / 1000}s...</small>
+                            `;
+                            resolve();
+                        };
+
+                        this.imagePreloader.src = imageUrl;
+                    });
 
                 } catch (error) {
                     console.error('Failed to update snapshot:', error);
+                    const imageContainer = document.querySelector('.image-container');
+                    imageContainer?.classList.remove('image-loading');
                 }
             }
 
@@ -929,12 +1116,29 @@
                 const container = document.getElementById(containerId);
                 if (!container) return;
 
-                container.innerHTML = '';
+                // Get existing zone cards to preserve and update in place
+                const existingCards = container.querySelectorAll('.zone-card');
+                const existingZoneMap = new Map();
+                
+                existingCards.forEach(card => {
+                    existingZoneMap.set(card.dataset.zone, card);
+                });
+
+                // Build new content without clearing container (for smoother updates)
+                const fragment = document.createDocumentFragment();
+                const updatedZones = new Set();
 
                 zones.forEach((zone, index) => {
-                    const zoneCard = document.createElement('div');
-                    zoneCard.className = 'zone-card';
-                    zoneCard.dataset.zone = zone.name;
+                    let zoneCard = existingZoneMap.get(zone.name);
+                    let isNewCard = !zoneCard;
+                    
+                    if (!zoneCard) {
+                        zoneCard = document.createElement('div');
+                        zoneCard.className = 'zone-card';
+                        zoneCard.dataset.zone = zone.name;
+                    } else {
+                        updatedZones.add(zone.name);
+                    }
 
                     // Determine zone status
                     let statusClass = 'available';
@@ -944,22 +1148,44 @@
                         statusClass = 'hard';
                     }
 
-                    zoneCard.classList.add(statusClass);
+                    // Update status classes smoothly
+                    if (!zoneCard.classList.contains(statusClass)) {
+                        zoneCard.classList.remove('available', 'occupied', 'hard');
+                        zoneCard.classList.add(statusClass);
+                    }
 
                     // Zone content
                     const confidence = zone.confidence ? Math.round(zone.confidence * 100) : 0;
-                    zoneCard.innerHTML = `
+                    const newContent = `
                         <div class="zone-name">${zone.name}</div>
                         <div class="zone-status">${zone.occupied ? 'Occupied' : 'Available'}</div>
                         ${confidence > 0 ? `<div class="zone-confidence">${confidence}%</div>` : ''}
                     `;
 
-                    // Add animation delay
-                    zoneCard.style.animationDelay = `${index * 0.05}s`;
-                    zoneCard.classList.add('slide-in');
+                    // Only update content if it has changed
+                    if (zoneCard.innerHTML !== newContent) {
+                        zoneCard.innerHTML = newContent;
+                    }
 
-                    container.appendChild(zoneCard);
+                    // Add slide-in animation for new cards only
+                    if (isNewCard) {
+                        zoneCard.style.animationDelay = `${index * 0.05}s`;
+                        zoneCard.classList.add('slide-in');
+                    }
+
+                    fragment.appendChild(zoneCard);
                 });
+
+                // Remove zones that no longer exist
+                existingCards.forEach(card => {
+                    if (!updatedZones.has(card.dataset.zone)) {
+                        card.remove();
+                    }
+                });
+
+                // Replace container content in one DOM operation
+                container.innerHTML = '';
+                container.appendChild(fragment);
             }
 
             showZonesError(message) {
@@ -1005,19 +1231,99 @@
                 const img = document.getElementById('snapshot-image');
                 if (img) {
                     img.style.objectFit = this.imageFitMode;
-                    img.classList.add('fade-in');
                 }
 
-                // Update button title
+                // Update button title and visual feedback
                 const fitBtn = document.getElementById('fit-toggle');
                 if (fitBtn) {
-                    const modeNames = { contain: 'Fit', cover: 'Fill', fill: 'Stretch' };
-                    fitBtn.title = `Current: ${modeNames[this.imageFitMode]}`;
+                    const modeNames = { 
+                        contain: 'Fit to view', 
+                        cover: 'Fill view', 
+                        fill: 'Stretch to fit' 
+                    };
+                    const modeIcons = {
+                        contain: '◱',
+                        cover: '◰', 
+                        fill: '◳'
+                    };
+                    
+                    fitBtn.textContent = modeIcons[this.imageFitMode];
+                    fitBtn.title = `Cycle fit mode (${modeNames[this.imageFitMode]})`;
+                    
+                    // Visual feedback
+                    fitBtn.classList.add('active');
+                    setTimeout(() => fitBtn.classList.remove('active'), 200);
+                }
+            }
+
+            toggleFullscreen() {
+                if (this.isFullscreen) {
+                    this.exitFullscreen();
+                } else {
+                    this.enterFullscreen();
+                }
+            }
+
+            enterFullscreen() {
+                const imageContainer = document.querySelector('.image-container');
+                const fullscreenBtn = document.getElementById('fullscreen-btn');
+                
+                if (imageContainer && !this.isFullscreen) {
+                    this.isFullscreen = true;
+                    
+                    // Add fullscreen class
+                    imageContainer.classList.add('fullscreen');
+                    
+                    // Update button
+                    if (fullscreenBtn) {
+                        fullscreenBtn.textContent = '⛌';
+                        fullscreenBtn.title = 'Exit fullscreen';
+                        fullscreenBtn.classList.add('active');
+                    }
+
+                    // Try to use browser fullscreen API
+                    if (imageContainer.requestFullscreen) {
+                        imageContainer.requestFullscreen().catch(() => {
+                            // Fallback to CSS fullscreen if browser fullscreen fails
+                        });
+                    }
+
+                    // Disable body scrolling
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+
+            exitFullscreen() {
+                const imageContainer = document.querySelector('.image-container');
+                const fullscreenBtn = document.getElementById('fullscreen-btn');
+                
+                if (this.isFullscreen) {
+                    this.isFullscreen = false;
+                    
+                    // Remove fullscreen class
+                    imageContainer?.classList.remove('fullscreen');
+                    
+                    // Update button
+                    if (fullscreenBtn) {
+                        fullscreenBtn.textContent = '⛶';
+                        fullscreenBtn.title = 'Toggle fullscreen';
+                        fullscreenBtn.classList.remove('active');
+                    }
+
+                    // Exit browser fullscreen if active
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen().catch(() => {
+                            // Ignore errors
+                        });
+                    }
+
+                    // Re-enable body scrolling
+                    document.body.style.overflow = '';
                 }
             }
 
             async refreshSnapshot() {
-                this.setRefreshIndicator(true);
+                this.setRefreshIndicator(true, true);
                 await this.updateSnapshot();
                 this.setRefreshIndicator(false);
             }
@@ -1044,11 +1350,22 @@
                 }
             }
 
-            setRefreshIndicator(loading) {
+            setRefreshIndicator(loading, isManual = false) {
                 const indicator = document.getElementById('refresh-indicator');
                 if (!indicator) return;
 
-                indicator.classList.toggle('loading', loading);
+                if (loading) {
+                    indicator.classList.add('loading');
+                    // Less prominent indicator for auto-refresh
+                    if (!isManual) {
+                        indicator.style.opacity = '0.6';
+                    } else {
+                        indicator.style.opacity = '1';
+                    }
+                } else {
+                    indicator.classList.remove('loading');
+                    indicator.style.opacity = '1';
+                }
             }
 
             updateLastUpdateTime() {
