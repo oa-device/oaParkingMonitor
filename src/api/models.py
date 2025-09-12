@@ -84,6 +84,7 @@ class StatusResponse(BaseModel):
     uptime_seconds: float = Field(..., description="Service uptime in seconds")
     next_snapshot_in: float = Field(..., description="Seconds until next snapshot")
     model_loaded: bool = Field(..., description="Whether AI model is loaded")
+    model_name: Optional[str] = Field(None, description="Name of the AI model file")
     device: str = Field(..., description="Processing device (cpu/cuda/mps)")
     total_zones: int = Field(..., description="Total parking zones configured")
 

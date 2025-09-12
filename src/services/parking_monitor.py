@@ -7,6 +7,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, Dict, Any
 
 from ..config import ParkingConfig, ConfigManager
@@ -30,8 +31,8 @@ class ParkingMonitorService:
         self.config_manager = ConfigManager(config_file)
         self.config = self.config_manager.config
         
-        # Initialize detector with clean configuration
-        self.detector = MVPParkingDetector()
+        # Initialize detector with shared configuration
+        self.detector = MVPParkingDetector(config=self.config)
         self.running = False
         self.start_time = datetime.now()
         
@@ -41,6 +42,7 @@ class ParkingMonitorService:
         
         self.logger.info(f"Service initialized with {self.config.get_total_zones()} parking zones")
         self.logger.info(f"Snapshot interval: {self.config.processing.snapshot_interval}s")
+        self.logger.info("Detector initialized with shared configuration")
     
     def _setup_logging(self):
         """Setup logging from configuration"""
@@ -129,6 +131,10 @@ class ParkingMonitorService:
         time_since_last = current_time - config_data.get("last_snapshot_epoch", 0)
         next_snapshot_in = max(0, config_data.get("snapshot_interval", 5) - time_since_last)
         
+        # Extract model name from model path
+        model_path = self.config.processing.model_path
+        model_name = Path(model_path).name if model_path else "Unknown"
+        
         return {
             "processing_enabled": config_data.get("processing_enabled", True),
             "snapshot_interval": config_data.get("snapshot_interval", 5),
@@ -137,6 +143,7 @@ class ParkingMonitorService:
             "uptime_seconds": self.get_uptime(),
             "next_snapshot_in": round(next_snapshot_in, 1),
             "model_loaded": self.detector.stats.get("model_loaded", False),
+            "model_name": model_name,
             "device": self.detector.device,
             "total_zones": config_data.get("total_zones", self.config.get_total_zones()),
             "service_running": self.running
@@ -144,10 +151,18 @@ class ParkingMonitorService:
     
     def get_device_info(self) -> Dict[str, Any]:
         """Get device and camera information"""
+        # Check if using camera device (numeric source) vs video file
+        is_camera_device = str(self.detector.video_source).isdigit()
+        
+        # Check if camera manager is initialized
+        device_initialized = True
+        if hasattr(self.detector, 'camera_manager') and hasattr(self.detector.camera_manager, 'is_initialized'):
+            device_initialized = self.detector.camera_manager.is_initialized()
+        
         return {
-            "is_camera_device": self.detector.is_camera_device,
-            "device_initialized": self.detector.camera_initialized,
-            "processing_device": self.detector.device,
+            "is_camera_device": is_camera_device,
+            "device_initialized": device_initialized,
+            "processing_device": str(self.detector.device),
             "video_source": str(self.config.video.source)
         }
     
