@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Monitor Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-green: #00ff88;
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --text-muted: #666666;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 2400px;
+            width: 100%;
+            margin: 0 auto;
+            padding: var(--spacing-lg);
+        }
+
+        /* Header Section */
+        .header {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-green);
+            margin-bottom: var(--spacing-md);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .status-bar {
+            background: var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+            transition: var(--transition);
+        }
+
+        .status-bar:hover {
+            box-shadow: var(--shadow-medium);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .status-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: var(--spacing-sm);
+        }
+
+        .status-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-xs);
+            font-weight: 500;
+        }
+
+        .status-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .status-healthy { color: var(--primary-green); }
+        .status-warning { color: #ffaa00; }
+        .status-error { color: #ff4444; }
+
+        /* Main Layout */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1.618fr 1fr;
+            gap: var(--spacing-xl);
+            align-items: start;
+        }
+
+        /* Live View Panel */
+        .snapshot-panel {
+            background: var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-medium);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+            height: fit-content;
+        }
+
+        .snapshot-panel:hover {
+            box-shadow: var(--shadow-heavy);
+            border-color: rgba(0, 255, 136, 0.2);
+        }
+
+        .panel-header {
+            background: var(--bg-secondary);
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .refresh-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary-green);
+            transition: var(--transition);
+        }
+
+        .refresh-indicator.loading {
+            background: #ffaa00;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+
+        .image-container {
+            position: relative;
+            background: var(--bg-primary);
+            aspect-ratio: 16/9;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .snapshot-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            /* No transition - instant updates */
+            cursor: pointer;
+            opacity: 0;
+        }
+
+        .snapshot-image.loaded {
+            opacity: 1;
+        }
+
+        .snapshot-image.cover { object-fit: cover; }
+        .snapshot-image.fill { object-fit: fill; }
+
+        /* Fullscreen styles */
+        .image-container.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.95);
+            aspect-ratio: unset;
+            min-height: unset;
+            cursor: zoom-out;
+        }
+
+        .image-container.fullscreen .snapshot-image {
+            cursor: zoom-out;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .fullscreen-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .fullscreen-backdrop.active {
+            opacity: 1;
+        }
+
+        .image-overlay {
+            position: absolute;
+            top: var(--spacing-md);
+            right: var(--spacing-md);
+            display: flex;
+            gap: var(--spacing-sm);
+            opacity: 0;
+            transition: var(--transition);
+            z-index: 10;
+        }
+
+        .image-container:hover .image-overlay {
+            opacity: 1;
+        }
+
+        .image-container.fullscreen .image-overlay {
+            opacity: 1;
+            top: var(--spacing-lg);
+            right: var(--spacing-lg);
+        }
+
+        .control-btn {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--border-radius-sm);
+            color: var(--text-primary);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: var(--transition);
+            backdrop-filter: blur(8px);
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: var(--primary-green);
+            color: var(--primary-green);
+            transform: scale(1.05);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-btn.active {
+            background: rgba(0, 255, 136, 0.3);
+            border-color: var(--primary-green);
+            color: var(--primary-green);
+        }
+
+        .no-image {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            gap: var(--spacing-md);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--bg-secondary);
+            border-top: 3px solid var(--primary-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Sidebar Panels */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .panel {
+            background: var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .panel:hover {
+            box-shadow: var(--shadow-medium);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .panel-content {
+            padding: var(--spacing-lg);
+        }
+
+        /* Parking Zones */
+        .zones-grid {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .zone-row {
+            display: grid;
+            gap: var(--spacing-sm);
+            justify-items: center;
+        }
+
+        .zone-row.front { grid-template-columns: repeat(7, 1fr); }
+        .zone-row.back { 
+            grid-template-columns: repeat(5, 1fr);
+            max-width: calc(5/7 * 100%);
+            margin: 0 auto;
+        }
+
+        .zone-card {
+            background: var(--bg-secondary);
+            border-radius: var(--border-radius-sm);
+            padding: var(--spacing-sm);
+            text-align: center;
+            border: 2px solid transparent;
+            /* No transition - instant updates */
+            width: 100%;
+            height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .zone-card.available {
+            border-color: var(--primary-green);
+            background: rgba(0, 255, 136, 0.1);
+            box-shadow: 0 0 16px rgba(0, 255, 136, 0.2);
+        }
+
+        .zone-card.occupied {
+            border-color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            box-shadow: 0 0 16px rgba(255, 68, 68, 0.2);
+        }
+
+        .zone-card.hard {
+            border-color: #ffaa00;
+            background: rgba(255, 170, 0, 0.1);
+            box-shadow: 0 0 16px rgba(255, 170, 0, 0.2);
+        }
+
+        .zone-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            /* Only animate hover effects, not status changes */
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .zone-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .zone-status {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .zone-confidence {
+            font-size: 0.65rem;
+            opacity: 0.7;
+            font-weight: 500;
+        }
+
+        /* Statistics Panel */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--border-radius-sm);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .stat-item:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-xs);
+            display: block;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Camera Controls */
+        .camera-controls {
+            transition: var(--transition);
+        }
+
+        .controls-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            padding: var(--spacing-md) 0;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #444;
+            transition: var(--transition);
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: var(--transition);
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary-green);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .controls-content {
+            display: none;
+            margin-top: var(--spacing-md);
+            padding-top: var(--spacing-md);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .controls-content.expanded {
+            display: block;
+        }
+
+        /* Last Update */
+        .last-update {
+            text-align: center;
+            margin-top: var(--spacing-lg);
+            padding-top: var(--spacing-md);
+            border-top: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1.4fr 1fr;
+                gap: var(--spacing-lg);
+            }
+
+            .zone-card {
+                height: 65px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-lg);
+            }
+
+            .sidebar {
+                order: -1;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--spacing-md);
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .status-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .zone-row.front { grid-template-columns: repeat(4, 1fr); }
+            .zone-row.back { 
+                grid-template-columns: repeat(3, 1fr);
+                max-width: calc(3/4 * 100%);
+            }
+
+            .zone-card {
+                height: 60px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .status-bar {
+                grid-template-columns: 1fr;
+            }
+
+            .zone-card {
+                height: 55px;
+                padding: var(--spacing-xs);
+            }
+
+            .zone-name {
+                font-size: 0.8rem;
+            }
+
+            .zone-status {
+                font-size: 0.7rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .control-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 18px;
+            }
+
+            .image-container.fullscreen .image-overlay {
+                top: var(--spacing-xl);
+                right: var(--spacing-xl);
+                flex-direction: column;
+            }
+        }
+
+        /* Error States */
+        .error-message {
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid #ff4444;
+            border-radius: var(--border-radius-sm);
+            padding: var(--spacing-md);
+            color: #ff4444;
+            text-align: center;
+            margin: var(--spacing-md) 0;
+        }
+
+        .warning-message {
+            background: rgba(255, 170, 0, 0.1);
+            border: 1px solid #ffaa00;
+            border-radius: var(--border-radius-sm);
+            padding: var(--spacing-md);
+            color: #ffaa00;
+            text-align: center;
+            margin: var(--spacing-md) 0;
+        }
+
+        /* Loading states */
+        .image-loading {
+            position: relative;
+        }
+
+        .image-loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--primary-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 5;
+        }
+
+        /* Smooth transitions for zones */
+        /* No transitions during refresh - instant updates */
+
+        /* Accessibility */
+        button:focus-visible,
+        .control-btn:focus-visible {
+            outline: 2px solid var(--primary-green);
+            outline-offset: 2px;
+        }
+
+        /* Reduced motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+            .snapshot-image,
+            .control-btn,
+            .zone-card {
+                transition: none;
+            }
+            
+            .fade-in,
+            .slide-in {
+                animation: none;
+            }
+        }
+
+        /* Animations disabled for instant refresh updates */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <h1>Parking Monitor Dashboard</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-label">Service Status</span>
+                    <span class="status-value status-healthy" id="service-status">Online</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Total Spaces</span>
+                    <span class="status-value" id="total-spaces">12</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Occupied</span>
+                    <span class="status-value status-error" id="occupied-spaces">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Available</span>
+                    <span class="status-value status-healthy" id="available-spaces">12</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Occupancy Rate</span>
+                    <span class="status-value" id="occupancy-rate">0%</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Model Status</span>
+                    <span class="status-value status-warning" id="model-status">Loading</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Live Parking View -->
+            <section class="snapshot-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Live Parking View</span>
+                    <div class="refresh-indicator" id="refresh-indicator"></div>
+                </div>
+                <div class="image-container">
+                    <img class="snapshot-image" id="snapshot-image" style="display: none;" alt="Live parking lot view">
+                    <div class="no-image" id="no-image">
+                        <div class="loading-spinner"></div>
+                        <span>Loading parking view...</span>
+                    </div>
+                    <div class="image-overlay">
+                        <button class="control-btn" id="fullscreen-btn" title="Toggle fullscreen" aria-label="Toggle fullscreen">⛶</button>
+                        <button class="control-btn" id="fit-toggle" title="Cycle fit mode (Contain)" aria-label="Cycle image fit mode">◱</button>
+                        <button class="control-btn" id="refresh-btn" title="Refresh image" aria-label="Refresh image">↻</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <!-- Camera Controls -->
+                <section class="panel camera-controls">
+                    <div class="panel-header">
+                        <span class="panel-title">Camera Controls</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="controls-toggle" id="controls-toggle">
+                            <span>Enable Manual Controls</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="camera-toggle">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="controls-content" id="controls-content">
+                            <p style="color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+                                Manual camera controls would appear here when enabled.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Parking Zones -->
+                <section class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Parking Zones</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="zones-grid">
+                            <div class="zone-row front" id="front-zones">
+                                <!-- A1-A7 zones will be populated here -->
+                            </div>
+                            <div class="zone-row back" id="back-zones">
+                                <!-- B1-B5 zones will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Statistics -->
+                <section class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Detection Statistics</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-label">Easy Zones</span>
+                                <span class="stat-value status-healthy" id="easy-zones">7</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Hard Zones</span>
+                                <span class="stat-value status-warning" id="hard-zones">5</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Processing FPS</span>
+                                <span class="stat-value" id="processing-fps">0.2</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Avg Confidence</span>
+                                <span class="stat-value" id="avg-confidence">85%</span>
+                            </div>
+                        </div>
+                        <div class="last-update">
+                            Last update: <span id="last-update">Never</span>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+        </main>
+    </div>
+
+    <script>
+        class ParkingDashboard {
+            constructor() {
+                this.refreshInterval = 5000; // 5 seconds
+                this.imageFitMode = 'contain'; // contain, cover, fill
+                this.isAutoRefreshing = true;
+                this.lastUpdateTime = 0;
+                this.isFullscreen = false;
+                this.imagePreloader = new Image();
+                
+                this.init();
+            }
+
+            async init() {
+                this.setupEventListeners();
+                this.startAutoRefresh();
+                await this.fetchInitialData();
+            }
+
+            setupEventListeners() {
+                // Image controls
+                const fitToggle = document.getElementById('fit-toggle');
+                const refreshBtn = document.getElementById('refresh-btn');
+                const fullscreenBtn = document.getElementById('fullscreen-btn');
+                const snapshotImage = document.getElementById('snapshot-image');
+                const imageContainer = document.querySelector('.image-container');
+
+                fitToggle?.addEventListener('click', () => this.toggleImageFit());
+                refreshBtn?.addEventListener('click', () => this.refreshSnapshot());
+                fullscreenBtn?.addEventListener('click', () => this.toggleFullscreen());
+                
+                // Click image for fullscreen (but not when already in fullscreen)
+                imageContainer?.addEventListener('click', (e) => {
+                    if (e.target === snapshotImage && !this.isFullscreen) {
+                        this.toggleFullscreen();
+                    }
+                });
+
+                // Camera controls toggle
+                const cameraToggle = document.getElementById('camera-toggle');
+                const controlsContent = document.getElementById('controls-content');
+
+                cameraToggle?.addEventListener('change', (e) => {
+                    controlsContent?.classList.toggle('expanded', e.target.checked);
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'r' || e.key === 'R') {
+                        e.preventDefault();
+                        this.refreshSnapshot();
+                    } else if (e.key === 'f' || e.key === 'F') {
+                        e.preventDefault();
+                        this.toggleImageFit();
+                    } else if (e.key === 'Escape') {
+                        if (this.isFullscreen) {
+                            this.exitFullscreen();
+                        }
+                    } else if (e.key === ' ' || e.key === 'Enter') {
+                        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                            e.preventDefault();
+                            this.toggleFullscreen();
+                        }
+                    }
+                });
+
+                // Fullscreen change detection (browser native fullscreen)
+                document.addEventListener('fullscreenchange', () => {
+                    if (!document.fullscreenElement && this.isFullscreen) {
+                        this.exitFullscreen();
+                    }
+                });
+            }
+
+            startAutoRefresh() {
+                setInterval(() => {
+                    if (this.isAutoRefreshing) {
+                        this.fetchData();
+                    }
+                }, this.refreshInterval);
+            }
+
+            async fetchInitialData() {
+                this.setRefreshIndicator(true, true);
+                try {
+                    // Load snapshot first for better perceived performance
+                    await this.updateSnapshot();
+                    
+                    // Then load other data in parallel
+                    await Promise.all([
+                        this.updateZones(),
+                        this.updateStats()
+                    ]);
+                    
+                    this.setServiceStatus('healthy');
+                } catch (error) {
+                    console.error('Failed to fetch initial data:', error);
+                    this.setServiceStatus('error');
+                } finally {
+                    this.setRefreshIndicator(false);
+                }
+            }
+
+            async fetchData() {
+                // Use more subtle refresh indicator for auto-refresh
+                this.setRefreshIndicator(true, false);
+                try {
+                    const [detectionResponse, statusResponse] = await Promise.all([
+                        fetch('/api/detection').catch(() => null),
+                        fetch('/api/status').catch(() => null)
+                    ]);
+
+                    let detectionData = {};
+                    let statusData = {};
+
+                    if (detectionResponse?.ok) {
+                        detectionData = await detectionResponse.json();
+                    }
+
+                    if (statusResponse?.ok) {
+                        statusData = await statusResponse.json();
+                    }
+
+                    await this.updateDashboard({ ...detectionData, ...statusData });
+                    this.setServiceStatus('healthy');
+                    
+                } catch (error) {
+                    console.error('Failed to fetch data:', error);
+                    this.setServiceStatus('error');
+                } finally {
+                    this.setRefreshIndicator(false);
+                }
+            }
+
+            async updateDashboard(data) {
+                await Promise.all([
+                    this.updateStatusBar(data),
+                    this.updateSnapshot(),
+                    this.updateZones(),
+                    this.updateStats(data)
+                ]);
+
+                this.updateLastUpdateTime();
+            }
+
+            updateStatusBar(data) {
+                const totalSpaces = data.total_spaces || 12;
+                const occupiedSpaces = data.occupied_spaces || 0;
+                const availableSpaces = totalSpaces - occupiedSpaces;
+                const occupancyRate = totalSpaces > 0 ? Math.round((occupiedSpaces / totalSpaces) * 100) : 0;
+
+                document.getElementById('total-spaces').textContent = totalSpaces;
+                document.getElementById('occupied-spaces').textContent = occupiedSpaces;
+                document.getElementById('available-spaces').textContent = availableSpaces;
+                document.getElementById('occupancy-rate').textContent = occupancyRate + '%';
+
+                // Update model status
+                const modelStatus = data.model_loaded ? (data.model_name || 'Loaded') : 'Loading';
+                const modelElement = document.getElementById('model-status');
+                modelElement.textContent = modelStatus;
+                modelElement.className = 'status-value ' + (data.model_loaded ? 'status-healthy' : 'status-warning');
+
+                // Update occupancy rate color
+                const occupancyElement = document.getElementById('occupancy-rate');
+                occupancyElement.className = 'status-value';
+                if (occupancyRate >= 80) {
+                    occupancyElement.classList.add('status-error');
+                } else if (occupancyRate >= 60) {
+                    occupancyElement.classList.add('status-warning');
+                } else {
+                    occupancyElement.classList.add('status-healthy');
+                }
+            }
+
+            async updateSnapshot() {
+                try {
+                    const timestamp = Date.now();
+                    const imageUrl = `/api/snapshot?t=${timestamp}`;
+                    
+                    const img = document.getElementById('snapshot-image');
+                    const noImage = document.getElementById('no-image');
+                    const imageContainer = document.querySelector('.image-container');
+
+                    // Show subtle loading state
+                    imageContainer?.classList.add('image-loading');
+
+                    // Use preloader for smooth transitions
+                    return new Promise((resolve) => {
+                        this.imagePreloader.onload = () => {
+                            // Instant update without any fade animations
+                            img.src = this.imagePreloader.src;
+                            img.style.objectFit = this.imageFitMode;
+                            img.style.display = 'block';
+                            img.style.opacity = '1';
+                            img.classList.add('loaded');
+                            noImage.style.display = 'none';
+                            
+                            // Remove loading state
+                            imageContainer?.classList.remove('image-loading');
+                            
+                            resolve();
+                        };
+                        
+                        this.imagePreloader.onerror = () => {
+                            img.classList.remove('loaded');
+                            img.style.display = 'none';
+                            noImage.style.display = 'flex';
+                            imageContainer?.classList.remove('image-loading');
+                            
+                            noImage.innerHTML = `
+                                <div style="color: #ff4444; font-size: 2rem; margin-bottom: 16px;">⚠</div>
+                                <span>Camera unavailable</span>
+                                <small style="color: var(--text-muted); margin-top: 8px;">Retrying in ${this.refreshInterval / 1000}s...</small>
+                            `;
+                            resolve();
+                        };
+
+                        this.imagePreloader.src = imageUrl;
+                    });
+
+                } catch (error) {
+                    console.error('Failed to update snapshot:', error);
+                    const imageContainer = document.querySelector('.image-container');
+                    imageContainer?.classList.remove('image-loading');
+                }
+            }
+
+            async updateZones() {
+                try {
+                    const response = await fetch('/api/zones');
+                    if (!response.ok) {
+                        throw new Error(`Zones API error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (!data.zones || !Array.isArray(data.zones)) {
+                        console.warn('Invalid zones data:', data);
+                        return;
+                    }
+
+                    // Separate and sort zones
+                    const frontZones = data.zones
+                        .filter(z => z.name.startsWith('A'))
+                        .sort((a, b) => parseInt(a.name.slice(1)) - parseInt(b.name.slice(1)));
+                    
+                    const backZones = data.zones
+                        .filter(z => z.name.startsWith('B'))
+                        .sort((a, b) => parseInt(a.name.slice(1)) - parseInt(b.name.slice(1)));
+
+                    this.renderZones('front-zones', frontZones);
+                    this.renderZones('back-zones', backZones);
+
+                } catch (error) {
+                    console.error('Failed to update zones:', error);
+                    this.showZonesError(error.message);
+                }
+            }
+
+            renderZones(containerId, zones) {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+
+                // Get existing zone cards to preserve and update in place
+                const existingCards = container.querySelectorAll('.zone-card');
+                const existingZoneMap = new Map();
+                
+                existingCards.forEach(card => {
+                    existingZoneMap.set(card.dataset.zone, card);
+                });
+
+                // Build new content without clearing container (for smoother updates)
+                const fragment = document.createDocumentFragment();
+                const updatedZones = new Set();
+
+                zones.forEach((zone, index) => {
+                    let zoneCard = existingZoneMap.get(zone.name);
+                    let isNewCard = !zoneCard;
+                    
+                    if (!zoneCard) {
+                        zoneCard = document.createElement('div');
+                        zoneCard.className = 'zone-card';
+                        zoneCard.dataset.zone = zone.name;
+                    } else {
+                        updatedZones.add(zone.name);
+                    }
+
+                    // Determine zone status
+                    let statusClass = 'available';
+                    if (zone.occupied) {
+                        statusClass = 'occupied';
+                    } else if (zone.detection_difficulty === 'hard' || zone.name.startsWith('B')) {
+                        statusClass = 'hard';
+                    }
+
+                    // Update status classes smoothly
+                    if (!zoneCard.classList.contains(statusClass)) {
+                        zoneCard.classList.remove('available', 'occupied', 'hard');
+                        zoneCard.classList.add(statusClass);
+                    }
+
+                    // Zone content
+                    const confidence = zone.confidence ? Math.round(zone.confidence * 100) : 0;
+                    const newContent = `
+                        <div class="zone-name">${zone.name}</div>
+                        <div class="zone-status">${zone.occupied ? 'Occupied' : 'Available'}</div>
+                        ${confidence > 0 ? `<div class="zone-confidence">${confidence}%</div>` : ''}
+                    `;
+
+                    // Only update content if it has changed
+                    if (zoneCard.innerHTML !== newContent) {
+                        zoneCard.innerHTML = newContent;
+                    }
+
+                    // No animations - instant display
+
+                    fragment.appendChild(zoneCard);
+                });
+
+                // Remove zones that no longer exist
+                existingCards.forEach(card => {
+                    if (!updatedZones.has(card.dataset.zone)) {
+                        card.remove();
+                    }
+                });
+
+                // Replace container content in one DOM operation
+                container.innerHTML = '';
+                container.appendChild(fragment);
+            }
+
+            showZonesError(message) {
+                const frontContainer = document.getElementById('front-zones');
+                const backContainer = document.getElementById('back-zones');
+                
+                const errorHtml = `<div class="error-message">Failed to load zones: ${message}</div>`;
+                
+                if (frontContainer) frontContainer.innerHTML = errorHtml;
+                if (backContainer) backContainer.innerHTML = '';
+            }
+
+            async updateStats(data = {}) {
+                try {
+                    // Update processing stats
+                    document.getElementById('processing-fps').textContent = (data.processing_fps || 0.2).toFixed(1);
+                    document.getElementById('easy-zones').textContent = data.easy_zones_count || 7;
+                    document.getElementById('hard-zones').textContent = data.hard_zones_count || 5;
+
+                    // Calculate average confidence if zones data is available
+                    if (data.zones && Array.isArray(data.zones)) {
+                        const validConfidences = data.zones
+                            .filter(z => z.confidence > 0)
+                            .map(z => z.confidence);
+                        
+                        const avgConfidence = validConfidences.length > 0
+                            ? Math.round(validConfidences.reduce((a, b) => a + b, 0) / validConfidences.length * 100)
+                            : 0;
+                        
+                        document.getElementById('avg-confidence').textContent = avgConfidence + '%';
+                    }
+
+                } catch (error) {
+                    console.error('Failed to update stats:', error);
+                }
+            }
+
+            toggleImageFit() {
+                const modes = ['contain', 'cover', 'fill'];
+                const currentIndex = modes.indexOf(this.imageFitMode);
+                this.imageFitMode = modes[(currentIndex + 1) % modes.length];
+
+                const img = document.getElementById('snapshot-image');
+                if (img) {
+                    img.style.objectFit = this.imageFitMode;
+                }
+
+                // Update button title and visual feedback
+                const fitBtn = document.getElementById('fit-toggle');
+                if (fitBtn) {
+                    const modeNames = { 
+                        contain: 'Fit to view', 
+                        cover: 'Fill view', 
+                        fill: 'Stretch to fit' 
+                    };
+                    const modeIcons = {
+                        contain: '◱',
+                        cover: '◰', 
+                        fill: '◳'
+                    };
+                    
+                    fitBtn.textContent = modeIcons[this.imageFitMode];
+                    fitBtn.title = `Cycle fit mode (${modeNames[this.imageFitMode]})`;
+                    
+                    // Visual feedback
+                    fitBtn.classList.add('active');
+                    setTimeout(() => fitBtn.classList.remove('active'), 200);
+                }
+            }
+
+            toggleFullscreen() {
+                if (this.isFullscreen) {
+                    this.exitFullscreen();
+                } else {
+                    this.enterFullscreen();
+                }
+            }
+
+            enterFullscreen() {
+                const imageContainer = document.querySelector('.image-container');
+                const fullscreenBtn = document.getElementById('fullscreen-btn');
+                
+                if (imageContainer && !this.isFullscreen) {
+                    this.isFullscreen = true;
+                    
+                    // Add fullscreen class
+                    imageContainer.classList.add('fullscreen');
+                    
+                    // Update button
+                    if (fullscreenBtn) {
+                        fullscreenBtn.textContent = '⛌';
+                        fullscreenBtn.title = 'Exit fullscreen';
+                        fullscreenBtn.classList.add('active');
+                    }
+
+                    // Try to use browser fullscreen API
+                    if (imageContainer.requestFullscreen) {
+                        imageContainer.requestFullscreen().catch(() => {
+                            // Fallback to CSS fullscreen if browser fullscreen fails
+                        });
+                    }
+
+                    // Disable body scrolling
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+
+            exitFullscreen() {
+                const imageContainer = document.querySelector('.image-container');
+                const fullscreenBtn = document.getElementById('fullscreen-btn');
+                
+                if (this.isFullscreen) {
+                    this.isFullscreen = false;
+                    
+                    // Remove fullscreen class
+                    imageContainer?.classList.remove('fullscreen');
+                    
+                    // Update button
+                    if (fullscreenBtn) {
+                        fullscreenBtn.textContent = '⛶';
+                        fullscreenBtn.title = 'Toggle fullscreen';
+                        fullscreenBtn.classList.remove('active');
+                    }
+
+                    // Exit browser fullscreen if active
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen().catch(() => {
+                            // Ignore errors
+                        });
+                    }
+
+                    // Re-enable body scrolling
+                    document.body.style.overflow = '';
+                }
+            }
+
+            async refreshSnapshot() {
+                this.setRefreshIndicator(true, true);
+                await this.updateSnapshot();
+                this.setRefreshIndicator(false);
+            }
+
+            setServiceStatus(status) {
+                const statusElement = document.getElementById('service-status');
+                if (!statusElement) return;
+
+                statusElement.className = 'status-value';
+                
+                switch (status) {
+                    case 'healthy':
+                        statusElement.classList.add('status-healthy');
+                        statusElement.textContent = 'Online';
+                        break;
+                    case 'warning':
+                        statusElement.classList.add('status-warning');
+                        statusElement.textContent = 'Warning';
+                        break;
+                    case 'error':
+                        statusElement.classList.add('status-error');
+                        statusElement.textContent = 'Offline';
+                        break;
+                }
+            }
+
+            setRefreshIndicator(loading, isManual = false) {
+                const indicator = document.getElementById('refresh-indicator');
+                if (!indicator) return;
+
+                if (loading) {
+                    indicator.classList.add('loading');
+                    // Less prominent indicator for auto-refresh
+                    if (!isManual) {
+                        indicator.style.opacity = '0.6';
+                    } else {
+                        indicator.style.opacity = '1';
+                    }
+                } else {
+                    indicator.classList.remove('loading');
+                    indicator.style.opacity = '1';
+                }
+            }
+
+            updateLastUpdateTime() {
+                const lastUpdateElement = document.getElementById('last-update');
+                if (lastUpdateElement) {
+                    lastUpdateElement.textContent = new Date().toLocaleTimeString();
+                }
+            }
+        }
+
+        // Initialize dashboard when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new ParkingDashboard();
+        });
+
+        // Add service worker for offline functionality (optional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Service worker registration can be added here if needed
+            });
+        }
+    </script>
+</body>
+</html>
