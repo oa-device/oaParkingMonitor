@@ -66,7 +66,10 @@ class MVPParkingDetector:
             self.video_source = self.config.video.source  # Keep as string for camera device
         else:
             self.video_source = Path(self.config.video.source)  # Convert to Path for file
-        self.model_path = Path.home() / "orangead" / "oaParkingMonitor" / self.config.processing.model_path
+        # Use centralized path management for models
+        from .utils.paths import get_data_paths
+        data_paths = get_data_paths()
+        self.model_path = data_paths.base_data_dir.parent / "oaParkingMonitor" / self.config.processing.model_path
         
         # Device detection
         self.device = self._detect_optimal_device()
@@ -433,11 +436,15 @@ class MVPParkingDetector:
             # Update statistics
             self._update_stats(detections, zones_status)
             
+            # Save snapshot image for airport demo
+            snapshot_epoch = int(time.time())
+            self._save_snapshot_image(overlay_frame, snapshot_epoch)
+            
             # Create result
             result = SnapshotResult(
                 image=overlay_frame,
                 detections=detections,
-                timestamp=time.time(),
+                timestamp=snapshot_epoch,  # Use epoch timestamp
                 zones_status=zones_status,
                 processing_time=processing_time
             )
@@ -471,6 +478,44 @@ class MVPParkingDetector:
         
         # Simple FPS calculation (inverse of snapshot interval)
         self.stats["processing_fps"] = 1.0 / self.config.processing.snapshot_interval
+
+    
+    def _save_snapshot_image(self, image: np.ndarray, epoch: int) -> bool:
+        """
+        Save snapshot image to disk for airport demo.
+        
+        Args:
+            image: Processed image with overlays
+            epoch: Epoch timestamp for filename
+            
+        Returns:
+            True if successful
+        """
+        try:
+            # Import at method level to avoid circular imports
+            from .utils.paths import save_snapshot_image
+            import cv2
+            
+            # Encode image as JPEG
+            success, buffer = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 95])
+            if not success:
+                self.logger.error(f"Failed to encode image for epoch {epoch}")
+                return False
+            
+            # Save using centralized path management
+            image_bytes = buffer.tobytes()
+            saved = save_snapshot_image(epoch, image_bytes)
+            
+            if saved:
+                self.logger.debug(f"Saved snapshot image for epoch {epoch}")
+            else:
+                self.logger.warning(f"Failed to save snapshot image for epoch {epoch}")
+            
+            return saved
+            
+        except Exception as e:
+            self.logger.error(f"Error saving snapshot image for epoch {epoch}: {e}")
+            return False
     
     async def start_snapshot_loop(self):
         """Start the snapshot processing loop"""

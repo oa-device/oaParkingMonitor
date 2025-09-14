@@ -22,7 +22,7 @@ from fastapi.templating import Jinja2Templates
 from .api.models import (
     HealthResponse, CameraSettingsRequest, CameraSettingsResponse,
     CameraOperationResponse, CameraPresetsResponse, DetectionResponse,
-    ZonesResponse, StatusResponse, ConfigResponse, ErrorResponse
+    ZonesResponse, StatusResponse, ConfigResponse, ErrorResponse, HistoryResponse
 )
 from .services.parking_monitor import ParkingMonitorService
 from .services.camera_controller import CameraController
@@ -112,12 +112,14 @@ async def health_check():
     Returns comprehensive health information including service status,
     version, uptime, and current timestamp for monitoring purposes.
     """
+    current_epoch = time.time()
     return HealthResponse(
         status="healthy" if parking_service.running else "stopped",
         service="parking-monitor-modular",
         version="2.0.0",
         uptime=parking_service.get_uptime(),
-        timestamp=time.strftime("%Y-%m-%dT%H:%M:%S")
+        data_epoch=current_epoch,
+        request_epoch=current_epoch
     )
 
 
@@ -317,6 +319,7 @@ async def get_full_configuration():
     try:
         config_data = parking_service.get_config_data()
         
+        current_epoch = time.time()
         return ConfigResponse(
             configuration=config_data,
             metadata={
@@ -324,7 +327,9 @@ async def get_full_configuration():
                 "total_zones": parking_service.config.get_total_zones(),
                 "modular_architecture": True,
                 "version": "2.0.0"
-            }
+            },
+            data_epoch=current_epoch,
+            request_epoch=current_epoch
         )
         
     except Exception as e:
@@ -336,23 +341,87 @@ async def get_full_configuration():
 
 
 # History and Analytics API Endpoints
-@app.get("/api/history", tags=["Analytics"])
-async def get_occupancy_history(
-    hours: int = Query(24, ge=1, le=168, description="Hours of history to retrieve")
+@app.get("/api/history", response_model=HistoryResponse, tags=["Analytics"])
+async def get_snapshot_history(
+    from_epoch: int = Query(..., description="Start epoch timestamp"),
+    to_epoch: int = Query(..., description="End epoch timestamp")
 ):
-    """Get historical occupancy data and trends
+    """Get historical snapshot data within epoch range for airport demo
     
-    Returns historical parking occupancy data with trends, patterns,
-    and analytics for the specified time period.
+    Returns snapshots from the specified epoch range including JSON data
+    and image references for the YHU dashboard integration.
     """
     try:
-        analytics = await parking_service.get_occupancy_analytics(hours)
-        return JSONResponse(content=analytics)
+        # Import at function level to avoid circular imports
+        from .utils.paths import get_data_paths
+        
+        data_paths = get_data_paths()
+        current_epoch = time.time()
+        
+        # Get snapshots in the requested range
+        snapshots = data_paths.get_snapshots_in_range(from_epoch, to_epoch)
+        
+        # Load JSON data for each snapshot
+        snapshot_data = []
+        for snapshot_info in snapshots:
+            try:
+                from .utils.paths import load_snapshot_json
+                json_data = load_snapshot_json(snapshot_info["epoch"])
+                if json_data:
+                    # Add file existence info
+                    json_data["has_image"] = snapshot_info["has_image"]
+                    json_data["image_path"] = f"/api/snapshot/{snapshot_info['epoch']}"
+                    snapshot_data.append(json_data)
+            except Exception as e:
+                logging.warning(f"Failed to load snapshot {snapshot_info['epoch']}: {e}")
+        
+        return HistoryResponse(
+            snapshots=snapshot_data,
+            count=len(snapshot_data),
+            from_epoch=from_epoch,
+            to_epoch=to_epoch,
+            data_epoch=current_epoch,
+            request_epoch=current_epoch
+        )
         
     except Exception as e:
         logging.error(f"History retrieval error: {e}")
         return JSONResponse(
             content={"error": "Failed to get history", "message": str(e)},
+            status_code=500
+        )
+
+@app.get("/api/snapshot/{epoch}", tags=["Analytics"])
+async def get_historical_snapshot_image(epoch: int):
+    """Get historical snapshot image by epoch timestamp for airport demo
+    
+    Returns the snapshot image file for the specified epoch timestamp.
+    Used by YHU dashboard to display historical detection images.
+    """
+    try:
+        from .utils.paths import load_snapshot_image
+        
+        image_bytes = load_snapshot_image(epoch)
+        if image_bytes is None:
+            return JSONResponse(
+                content={"error": f"Snapshot image not found for epoch {epoch}"},
+                status_code=404
+            )
+        
+        return Response(
+            content=image_bytes,
+            media_type="image/jpeg",
+            headers={
+                "Content-Disposition": f"inline; filename=snapshot_{epoch}.jpg",
+                "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
+                "Last-Modified": time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(epoch))
+            }
+        )
+        
+    except Exception as e:
+        logging.error(f"Historical snapshot error for epoch {epoch}: {e}")
+        return JSONResponse(
+            content={"error": "Failed to get historical snapshot", "message": str(e)},
             status_code=500
         )
 

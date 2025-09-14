@@ -144,6 +144,10 @@ class StorageService:
             snapshot = await self.repository.save_detection_snapshot(snapshot_data)
             self.last_snapshot_id = snapshot.id
             
+            # Save JSON snapshot for airport demo
+            epoch = int(snapshot_data["epoch_time"])
+            self._save_json_snapshot(epoch, snapshot_data)
+            
             self.logger.debug(f"Stored snapshot {snapshot.id}: {total_occupied}/{len(zones_status)} occupied")
             return True
             
@@ -278,14 +282,23 @@ class StorageService:
     # ============= Background Tasks =============
     
     async def _cleanup_loop(self):
-        """Background task for data cleanup"""
+        """Background task for data cleanup - Database + Snapshot files"""
         while True:
             try:
                 await asyncio.sleep(3600)  # Run every hour
                 
+                # Clean database records
                 if self.session:
                     await DataRetentionPolicy.cleanup_old_data(self.session)
-                    self.logger.info("Completed data retention cleanup")
+                    self.logger.info("Completed database retention cleanup")
+                
+                # Clean snapshot files (30-day retention for airport demo)
+                from ..utils.paths import get_data_paths
+                data_paths = get_data_paths()
+                deleted_count = data_paths.cleanup_old_snapshots(days_to_keep=30)
+                
+                if deleted_count > 0:
+                    self.logger.info(f"Cleaned up {deleted_count} old snapshot files")
                     
             except asyncio.CancelledError:
                 break
@@ -337,3 +350,58 @@ class StorageService:
         """Clear all cached data"""
         self.zone_cache.clear()
         self.last_snapshot_id = None
+    
+    def _save_json_snapshot(self, epoch: int, snapshot_data: Dict[str, Any]) -> bool:
+        """
+        Save snapshot data as JSON file for airport demo.
+        
+        Args:
+            epoch: Epoch timestamp for filename
+            snapshot_data: Complete snapshot data to save
+            
+        Returns:
+            True if successful
+        """
+        try:
+            # Import at method level to avoid circular imports
+            from ..utils.paths import save_snapshot_json
+            
+            # Create a clean snapshot for JSON export
+            json_snapshot = {
+                "epoch": epoch,
+                "timestamp": snapshot_data.get("epoch_time"),
+                "occupancy": {
+                    "total_occupied": snapshot_data.get("total_occupied", 0),
+                    "total_vacant": snapshot_data.get("total_vacant", 0),
+                    "occupancy_rate": snapshot_data.get("occupancy_rate", 0.0),
+                    "total_zones": len(snapshot_data.get("zones_status", []))
+                },
+                "processing": {
+                    "processing_time": snapshot_data.get("processing_time", 0.0),
+                    "detection_method": snapshot_data.get("detection_method", "multi_scale"),
+                    "confidence_avg": snapshot_data.get("confidence_avg", 0.0),
+                    "stable_detections": snapshot_data.get("stable_detections", 0),
+                    "temporal_smoothing": snapshot_data.get("temporal_smoothing", False)
+                },
+                "detections": snapshot_data.get("detections", []),
+                "zones": snapshot_data.get("zones_status", []),
+                "metadata": {
+                    "version": "2.0.0",
+                    "airport_demo": True,
+                    "saved_at": epoch
+                }
+            }
+            
+            # Save using centralized path management
+            saved = save_snapshot_json(epoch, json_snapshot)
+            
+            if saved:
+                self.logger.debug(f"Saved JSON snapshot for epoch {epoch}")
+            else:
+                self.logger.warning(f"Failed to save JSON snapshot for epoch {epoch}")
+            
+            return saved
+            
+        except Exception as e:
+            self.logger.error(f"Error saving JSON snapshot for epoch {epoch}: {e}")
+            return False
