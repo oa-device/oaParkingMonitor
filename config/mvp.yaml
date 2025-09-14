@@ -96,7 +96,7 @@ parking_zones:
     space_id: 7
     name: "A7"
     description: "Front far right"
-    coordinates: [[1593, 315], [1777, 600], [1898, 588], [1899, 452], [1796, 296]]
+    coordinates: [[1593, 315], [1770, 602], [1920, 600], [1899, 452], [1796, 296]]
     detection_difficulty: "easy"
   
   # B-series: Back row zones - hard detection at top edge
