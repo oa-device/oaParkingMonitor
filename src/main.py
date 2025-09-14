@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -331,6 +331,142 @@ async def get_full_configuration():
         logging.error(f"Configuration error: {e}")
         return JSONResponse(
             content={"error": "Failed to get configuration", "message": str(e)},
+            status_code=500
+        )
+
+
+# History and Analytics API Endpoints
+@app.get("/api/history", tags=["Analytics"])
+async def get_occupancy_history(
+    hours: int = Query(24, ge=1, le=168, description="Hours of history to retrieve")
+):
+    """Get historical occupancy data and trends
+    
+    Returns historical parking occupancy data with trends, patterns,
+    and analytics for the specified time period.
+    """
+    try:
+        analytics = await parking_service.get_occupancy_analytics(hours)
+        return JSONResponse(content=analytics)
+        
+    except Exception as e:
+        logging.error(f"History retrieval error: {e}")
+        return JSONResponse(
+            content={"error": "Failed to get history", "message": str(e)},
+            status_code=500
+        )
+
+
+@app.get("/api/zones/{zone_id}/history", tags=["Analytics"])
+async def get_zone_history(
+    zone_id: int,
+    hours: int = Query(24, ge=1, le=168, description="Hours of history to retrieve")
+):
+    """Get historical data for a specific parking zone
+    
+    Returns detailed occupancy history for a single zone including
+    state changes, confidence trends, and detection patterns.
+    """
+    try:
+        history = await parking_service.get_zone_history(zone_id, hours)
+        return JSONResponse(content={
+            "zone_id": zone_id,
+            "hours": hours,
+            "history": history,
+            "data_points": len(history)
+        })
+        
+    except Exception as e:
+        logging.error(f"Zone history error: {e}")
+        return JSONResponse(
+            content={"error": f"Failed to get history for zone {zone_id}", "message": str(e)},
+            status_code=500
+        )
+
+
+@app.get("/api/analytics", tags=["Analytics"])
+async def get_analytics(
+    hours: int = Query(24, ge=1, le=168, description="Hours of data to analyze")
+):
+    """Get comprehensive parking analytics
+    
+    Returns analytics including occupancy trends, zone performance,
+    system health metrics, and usage patterns.
+    """
+    try:
+        analytics = await parking_service.get_occupancy_analytics(hours)
+        return JSONResponse(content=analytics)
+        
+    except Exception as e:
+        logging.error(f"Analytics error: {e}")
+        return JSONResponse(
+            content={"error": "Failed to generate analytics", "message": str(e)},
+            status_code=500
+        )
+
+
+@app.get("/api/export", tags=["Analytics"])
+async def export_data(
+    hours: int = Query(24, ge=1, le=168, description="Hours of data to export"),
+    format: str = Query("json", enum=["json", "csv"], description="Export format")
+):
+    """Export historical detection data
+    
+    Downloads historical parking data in specified format for
+    external analysis and reporting.
+    """
+    try:
+        data = await parking_service.export_data(hours, format)
+        
+        if format == "csv":
+            return Response(
+                content=data,
+                media_type="text/csv",
+                headers={
+                    "Content-Disposition": f"attachment; filename=parking_data_{hours}h.csv"
+                }
+            )
+        else:
+            return Response(
+                content=data,
+                media_type="application/json",
+                headers={
+                    "Content-Disposition": f"attachment; filename=parking_data_{hours}h.json"
+                }
+            )
+            
+    except Exception as e:
+        logging.error(f"Export error: {e}")
+        return JSONResponse(
+            content={"error": "Failed to export data", "message": str(e)},
+            status_code=500
+        )
+
+
+@app.get("/api/stats", tags=["Detection"])
+async def get_detection_stats():
+    """Get current detection statistics
+    
+    Returns real-time detection performance metrics including
+    temporal smoothing stats, multi-scale detection performance,
+    and tracking statistics.
+    """
+    try:
+        stats = await parking_service.get_detection_stats()
+        
+        # Add temporal and tracking stats if available
+        if hasattr(parking_service.detector, 'temporal_smoother'):
+            stats["temporal_smoothing"] = parking_service.detector.temporal_smoother.get_stats()
+        
+        if hasattr(parking_service.detector, 'vehicle_tracker'):
+            stats["vehicle_tracking"] = parking_service.detector.vehicle_tracker.get_stats()
+        
+        return JSONResponse(content=stats)
+        
+    except Exception as e:
+        logging.error(f"Stats error: {e}")
+        return JSONResponse(
+            content={"error": "Failed to get stats", "message": str(e)},
             status_code=500
         )
 
