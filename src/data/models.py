@@ -19,10 +19,15 @@ from sqlalchemy.orm import relationship, sessionmaker
 # Base model
 Base = declarative_base()
 
-# Database configuration
-DB_PATH = Path.home() / "orangead" / "oaParkingMonitor" / "data" / "parking_monitor.db"
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
+# Database configuration - Updated for airport demo
+from ..utils.paths import get_database_url, get_data_paths
+
+# Initialize data paths and migrate legacy database if needed
+data_paths = get_data_paths()
+data_paths.migrate_legacy_database()
+
+# Use centralized database URL
+DATABASE_URL = get_database_url()
 
 # Async engine and session
 async_engine = create_async_engine(
