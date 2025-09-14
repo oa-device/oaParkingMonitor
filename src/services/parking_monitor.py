@@ -8,10 +8,11 @@ import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from ..config import ParkingConfig, ConfigManager
 from ..detector import MVPParkingDetector
+from ..data import StorageService
 
 
 class ParkingMonitorService:
@@ -35,6 +36,9 @@ class ParkingMonitorService:
         self.detector = MVPParkingDetector(config=self.config)
         self.running = False
         self.start_time = datetime.now()
+        
+        # Initialize storage service for data persistence
+        self.storage_service = StorageService()
         
         # Setup logging from configuration
         self._setup_logging()
@@ -60,8 +64,15 @@ class ParkingMonitorService:
             self.running = True
             self.logger.info("Starting parking detection service...")
             
+            # Initialize storage service
+            await self.storage_service.initialize()
+            self.logger.info("Storage service initialized")
+            
             # Start detector snapshot loop in background
             detection_task = asyncio.create_task(self.detector.start_snapshot_loop())
+            
+            # Start data persistence loop
+            storage_task = asyncio.create_task(self._storage_loop())
             
             self.logger.info("Parking detection service started successfully")
             
@@ -77,6 +88,9 @@ class ParkingMonitorService:
             self.running = False
             
             await self.detector.stop()
+            
+            # Shutdown storage service
+            await self.storage_service.shutdown()
             
             self.logger.info("Parking detection service stopped successfully")
             
@@ -183,3 +197,67 @@ class ParkingMonitorService:
         except Exception as e:
             self.logger.error(f"Failed to reload configuration: {e}")
             return False
+    
+    async def _storage_loop(self):
+        """Background task to persist detection data"""
+        while self.running:
+            try:
+                # Wait for next snapshot
+                await asyncio.sleep(self.config.processing.snapshot_interval)
+                
+                # Get latest snapshot data
+                if self.detector.last_snapshot:
+                    snapshot = self.detector.last_snapshot
+                    
+                    # Convert VehicleDetection objects to dicts
+                    detections = []
+                    for det in snapshot.detections:
+                        detections.append({
+                            "bbox": [det.x, det.y, det.x + det.width, det.y + det.height],
+                            "confidence": det.confidence,
+                            "zone_id": det.zone_id,
+                            "vehicle_type": det.class_name
+                        })
+                    
+                    # Store in database
+                    await self.storage_service.store_detection_result(
+                        detections=detections,
+                        zones_status=snapshot.zones_status,
+                        processing_time=snapshot.processing_time
+                    )
+                    
+                    # Save system metrics
+                    stats = await self.detector.get_stats()
+                    await self.storage_service.save_system_metrics({
+                        "fps": stats.get("processing_fps", 0),
+                        "memory_usage_mb": self._get_memory_usage_mb(),
+                        "detection_latency_ms": snapshot.processing_time * 1000,
+                        "total_frames": stats.get("total_frames", 0),
+                        "vehicles_detected": stats.get("vehicles_detected", 0),
+                        "model_loaded": stats.get("model_loaded", False),
+                        "device_type": stats.get("device_info", {}).get("device", "cpu")
+                    })
+                    
+            except Exception as e:
+                self.logger.error(f"Storage loop error: {e}")
+                await asyncio.sleep(5)  # Wait before retry
+    
+    def _get_memory_usage_mb(self) -> float:
+        """Get current memory usage in MB"""
+        try:
+            import psutil
+            return psutil.virtual_memory().used / (1024 * 1024)
+        except:
+            return 0.0
+    
+    async def get_zone_history(self, zone_id: int, hours: int = 24) -> List[Dict[str, Any]]:
+        """Get historical data for a specific zone"""
+        return await self.storage_service.get_zone_history(zone_id, hours)
+    
+    async def get_occupancy_analytics(self, hours: int = 24) -> Dict[str, Any]:
+        """Get occupancy analytics and trends"""
+        return await self.storage_service.get_occupancy_analytics(hours)
+    
+    async def export_data(self, hours: int = 24, format: str = "json") -> Any:
+        """Export historical data"""
+        return await self.storage_service.export_data(hours, format)
