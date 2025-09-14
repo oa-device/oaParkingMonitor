@@ -20,6 +20,7 @@ from .config.models import ParkingZone
 from .detection import VehicleDetector, ZoneAnalyzer, ImagePreprocessor
 from .camera import CameraManager
 from .analysis import ZoneAnalysisAdapter
+from .core import TemporalSmoother, DetectionTracker, VehicleTracker
 
 
 @dataclass
@@ -77,6 +78,11 @@ class MVPParkingDetector:
         self.preprocessor = ImagePreprocessor()
         self.camera_manager = CameraManager(self.config, self.video_source)
         self.zone_analysis_adapter = ZoneAnalysisAdapter(self.zone_analyzer, self.logger)
+        
+        # Initialize temporal smoothing and tracking for persistence
+        self.temporal_smoother = TemporalSmoother(history_size=5, hysteresis_threshold=0.6)
+        self.detection_tracker = DetectionTracker(window_size=60)
+        self.vehicle_tracker = VehicleTracker(max_missed_frames=3)
         
         # Legacy detection state (for compatibility)
         self.model = None
@@ -222,7 +228,7 @@ class MVPParkingDetector:
 
     
     def _detect_vehicles(self, frame: np.ndarray) -> List[VehicleDetection]:
-        """Run vehicle detection using modular detector with enhanced preprocessing"""
+        """Run vehicle detection using multi-scale detection with temporal tracking"""
         try:
             if not self.vehicle_detector.is_loaded():
                 return []
@@ -234,22 +240,22 @@ class MVPParkingDetector:
                 enhance_edge_zones=True
             )
             
-            # Create zone difficulty mapping for adaptive confidence
-            zone_difficulty_map = {
-                zone.id: zone.detection_difficulty 
-                for zone in self.config.parking_zones
-            }
-            
-            # Run vehicle detection with modular detector
-            detections_data = self.vehicle_detector.detect_vehicles(
+            # Use multi-scale detection for better accuracy
+            detections_data = self.vehicle_tracker.detect_multi_scale(
                 processed_frame,
-                base_confidence=self.config.processing.confidence_threshold,
-                zone_difficulty_map=zone_difficulty_map
+                self.vehicle_detector,
+                base_confidence=self.config.processing.confidence_threshold
+            )
+            
+            # Track vehicles across frames
+            tracked_detections = self.vehicle_tracker.track_vehicles(
+                detections_data,
+                timestamp=time.time()
             )
             
             # Convert to legacy VehicleDetection format for compatibility
             detections = []
-            for det_data in detections_data:
+            for det_data in tracked_detections:
                 x1, y1, x2, y2 = det_data["bbox"]
                 detection = VehicleDetection(
                     x=int(x1),
@@ -257,10 +263,12 @@ class MVPParkingDetector:
                     width=int(x2 - x1),
                     height=int(y2 - y1),
                     confidence=float(det_data["confidence"]),
-                    class_name="vehicle"
+                    class_name="vehicle",
+                    zone_id=det_data.get("zone_id")
                 )
                 detections.append(detection)
             
+            self.logger.debug(f"Multi-scale detection found {len(detections)} vehicles")
             return detections
             
         except Exception as e:
@@ -268,8 +276,56 @@ class MVPParkingDetector:
             return []
     
     def _analyze_parking_zones(self, detections: List[VehicleDetection]) -> List[Dict[str, Any]]:
-        """Analyze parking zones using modular zone analyzer with enhanced detection"""
-        return self.zone_analysis_adapter.analyze_parking_zones(detections, self.config)
+        """Analyze parking zones with temporal smoothing for persistence"""
+        # First pass: basic zone analysis
+        initial_zones = self.zone_analysis_adapter.analyze_parking_zones(detections, self.config)
+        
+        # Convert detections to dict format for temporal smoothing
+        detection_dicts = []
+        for det in detections:
+            detection_dicts.append({
+                "bbox": [det.x, det.y, det.x + det.width, det.y + det.height],
+                "confidence": det.confidence,
+                "zone_id": det.zone_id,
+                "center": [det.x + det.width/2, det.y + det.height/2]
+            })
+        
+        # Apply temporal smoothing for persistence
+        zone_configs = [
+            {
+                "id": zone.id,
+                "space_id": zone.space_id,
+                "name": zone.name,
+                "coordinates": zone.coordinates,
+                "detection_difficulty": zone.detection_difficulty
+            }
+            for zone in self.config.parking_zones
+        ]
+        
+        _, smoothed_zones = self.temporal_smoother.smooth_detections(
+            detection_dicts, zone_configs
+        )
+        
+        # Merge smoothed results with initial analysis
+        enhanced_zones = []
+        for zone in initial_zones:
+            zone_id = zone["id"]
+            if zone_id in smoothed_zones:
+                # Use smoothed state for better persistence
+                zone["occupied"] = smoothed_zones[zone_id]["occupied"]
+                zone["confidence"] = smoothed_zones[zone_id]["confidence"]
+                zone["stable_frames"] = smoothed_zones[zone_id]["stable_frames"]
+                zone["temporal_smoothed"] = True
+            enhanced_zones.append(zone)
+        
+        # Track detection patterns
+        for zone in enhanced_zones:
+            self.detection_tracker.track_detection(
+                zone["id"], zone["occupied"], time.time()
+            )
+        
+        self.logger.debug(f"Temporal smoothing applied to {len(enhanced_zones)} zones")
+        return enhanced_zones
     
 
     
