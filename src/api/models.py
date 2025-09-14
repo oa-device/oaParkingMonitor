@@ -29,7 +29,8 @@ class HealthResponse(BaseModel):
     service: str
     version: str
     uptime: float
-    timestamp: str
+    data_epoch: float = Field(..., description="When the health data was collected")
+    request_epoch: float = Field(..., description="When the request was processed")
 
 
 class ErrorResponse(BaseModel):
@@ -93,3 +94,15 @@ class ConfigResponse(BaseModel):
     """Configuration response model"""
     configuration: Dict[str, Any] = Field(..., description="Current configuration")
     metadata: Dict[str, Any] = Field(..., description="Configuration metadata")
+    data_epoch: float = Field(..., description="When the configuration was loaded")
+    request_epoch: float = Field(..., description="When the request was processed")
+
+
+class HistoryResponse(BaseModel):
+    """Historical data response model for airport demo"""
+    snapshots: list[Dict[str, Any]] = Field(..., description="List of historical snapshots")
+    count: int = Field(..., description="Number of snapshots returned")
+    from_epoch: int = Field(..., description="Start epoch timestamp")
+    to_epoch: int = Field(..., description="End epoch timestamp")
+    data_epoch: float = Field(..., description="When the historical data was collected")
+    request_epoch: float = Field(..., description="When the request was processed")
