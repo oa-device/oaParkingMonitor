@@ -5,11 +5,8 @@
 echo "Activating parking monitor uv environment..."
 cd "$(dirname "$0")/.."
 
-if [ -f "$HOME/.cargo/env" ]; then
-    source "$HOME/.cargo/env"
-fi
-
-export PATH="$HOME/.cargo/bin:$PATH"
+# Add uv to PATH (installed in ~/.local/bin)
+export PATH="$HOME/.local/bin:$PATH"
 export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
 
 echo "[OK] uv Environment activated - ready for parking monitor development"

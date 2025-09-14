@@ -37,11 +37,8 @@ setup_system_requirements() {
         log_progress "Installing uv package manager..."
         curl -LsSf https://astral.sh/uv/install.sh | sh
         
-        # Source cargo environment
-        if [[ -f "$HOME/.cargo/env" ]]; then
-            # shellcheck source=/dev/null
-            source "$HOME/.cargo/env"
-        fi
+        # Add uv to PATH (installed in ~/.local/bin)
+        export PATH="$HOME/.local/bin:$PATH"
         
         # Verify installation
         if check_uv; then
