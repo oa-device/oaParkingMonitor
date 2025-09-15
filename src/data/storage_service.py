@@ -106,7 +106,7 @@ class StorageService:
             # Calculate aggregated metrics
             total_occupied = sum(1 for zone in zones_status if zone["occupied"])
             total_vacant = len(zones_status) - total_occupied
-            occupancy_rate = total_occupied / len(zones_status) if zones_status else 0.0
+            # Note: occupancy_rate calculation moved to frontend
             
             # Calculate average confidence
             confidences = [d["confidence"] for d in detections if "confidence" in d]
@@ -130,7 +130,6 @@ class StorageService:
                 "frame_path": frame_path,
                 "total_occupied": total_occupied,
                 "total_vacant": total_vacant,
-                "occupancy_rate": occupancy_rate,
                 "processing_time": processing_time,
                 "detection_method": "multi_scale",
                 "confidence_avg": confidence_avg,
@@ -373,7 +372,6 @@ class StorageService:
                 "occupancy": {
                     "total_occupied": snapshot_data.get("total_occupied", 0),
                     "total_vacant": snapshot_data.get("total_vacant", 0),
-                    "occupancy_rate": snapshot_data.get("occupancy_rate", 0.0),
                     "total_zones": len(snapshot_data.get("zones_status", []))
                 },
                 "processing": {

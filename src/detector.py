@@ -474,7 +474,7 @@ class MVPParkingDetector:
         # Update occupancy stats
         occupied_count = sum(1 for zone in zones_status if zone["occupied"])
         self.stats["occupied_spaces"] = occupied_count
-        self.stats["occupancy_rate"] = occupied_count / len(zones_status) if zones_status else 0.0
+        # Note: occupancy_rate calculation moved to frontend
         
         # Simple FPS calculation (inverse of snapshot interval)
         self.stats["processing_fps"] = 1.0 / self.config.processing.snapshot_interval

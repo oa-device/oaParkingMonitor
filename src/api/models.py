@@ -48,7 +48,7 @@ class DetectionResponse(BaseModel):
     vehicles_detected: int = Field(..., description="Number of vehicles detected")
     total_spaces: int = Field(..., description="Total parking spaces")
     occupied_spaces: int = Field(..., description="Number of occupied spaces")
-    occupancy_rate: float = Field(..., description="Occupancy rate (0.0-1.0)")
+    # Note: occupancy_rate calculation moved to frontend
     last_detection: Optional[str] = Field(None, description="Last detection timestamp")
     video_source: str = Field(..., description="Current video source")
     processing_fps: float = Field(..., description="Processing frames per second")

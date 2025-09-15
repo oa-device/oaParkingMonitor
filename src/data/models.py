@@ -57,7 +57,7 @@ class DetectionSnapshot(Base):
     # Aggregated metrics
     total_occupied = Column(Integer, default=0)
     total_vacant = Column(Integer, default=0)
-    occupancy_rate = Column(Float, default=0.0)
+    # Note: occupancy_rate calculation moved to frontend
     
     # Processing metrics
     processing_time = Column(Float, default=0.0)

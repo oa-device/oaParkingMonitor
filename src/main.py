@@ -137,7 +137,6 @@ async def get_detection():
             vehicles_detected=stats.get("vehicles_detected", 0),
             total_spaces=stats.get("total_zones", parking_service.config.get_total_zones()),
             occupied_spaces=stats.get("occupied_zones", 0),
-            occupancy_rate=stats.get("occupancy_rate", 0.0),
             last_detection=stats.get("last_detection"),
             video_source=stats.get("video_source", "staging_video"),
             processing_fps=stats.get("processing_fps", 0.2),

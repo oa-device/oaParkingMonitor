@@ -42,7 +42,6 @@ class DataRepository:
                 frame_path=snapshot_data.get("frame_path"),
                 total_occupied=snapshot_data.get("total_occupied", 0),
                 total_vacant=snapshot_data.get("total_vacant", 0),
-                occupancy_rate=snapshot_data.get("occupancy_rate", 0.0),
                 processing_time=snapshot_data.get("processing_time", 0.0),
                 detection_method=snapshot_data.get("detection_method", "multi_scale"),
                 confidence_avg=snapshot_data.get("confidence_avg", 0.0),
