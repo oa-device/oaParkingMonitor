@@ -1,0 +1,32 @@
+# oaParkingMonitor Edge Device Configuration
+# Simplified configuration for edge sensor with batch upload capability
+
+# Deployment identifiers (typically set by Ansible and environment variables)
+deployment:
+  customerId: "${CUSTOMER_ID}"          # Customer identifier
+  siteId: "${SITE_ID}"                  # Site identifier
+  zoneId: "${ZONE_ID}"                  # Zone identifier
+  cameraId: "${CAMERA_ID}"              # Camera identifier
+
+# Device metadata (for debugging and operations)
+device:
+  physicalCameraId: "/dev/video0"       # Physical camera device path
+  modelPath: "models/yolo11m.pt"        # AI model file path
+  modelVersion: "1.2.3"                 # Model version for tracking
+  snapshotInterval: 5                   # Detection interval in seconds
+  totalSpaces: 50                       # Total parking spaces in monitoring area
+
+# Central API configuration (optional, for direct upload)
+centralApi:
+  enabled: false                        # Enable batch upload to central API
+  endpoint: "${CENTRAL_API_URL}"        # Central API base URL
+  apiKey: "${API_KEY}"                  # API key for authentication
+  secretKey: "${SECRET_KEY}"            # Secret key for authentication
+  batchSize: 100                        # Upload batch size
+  submissionInterval: 60                # Upload interval in seconds
+
+# Version information (auto-populated)
+version:
+  software: "2.0.0"                     # Software version
+  deployed: "2025-09-15T11:28:00Z"      # Deployment timestamp
+  # hostname: auto-detected              # Device hostname
