@@ -4,14 +4,14 @@ Models matching central API with camelCase field names
 """
 
 import time
-import uuid
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
+from uuid_utils import uuid7
 
 
 def generate_uuid7() -> str:
-    """Generate UUIDv7 for time-ordered unique identifiers"""
-    return str(uuid.uuid7())
+    """Generate UUIDv7 for time-ordered unique identifiers using uuid-utils"""
+    return str(uuid7())
 
 
 def get_epoch_ms() -> int:
