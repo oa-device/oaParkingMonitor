@@ -17,7 +17,6 @@ from fastapi import FastAPI, Request, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, HTMLResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 
 # Import modular components
 from .api.models import ConfigResponse
@@ -65,10 +64,10 @@ Edge device provides minimal data collection and reliable sensor functionality.
 - **Config Update**: `POST /config` - Remote configuration
 
 ## Debug Endpoints (4)
-- **Visual Debug**: `GET /api/snapshot` - Processed image
-- **Camera Debug**: `GET /api/frame` - Raw camera feed
-- **Camera Status**: `GET /api/camera/status` - Hardware status
-- **Camera Recovery**: `POST /api/camera/restart` - Force restart
+- **Visual Debug**: `GET /snapshot` - Processed image
+- **Camera Debug**: `GET /frame` - Raw camera feed
+- **Camera Status**: `GET /camera/status` - Hardware status
+- **Camera Recovery**: `POST /camera/restart` - Force restart
 
 ## Dashboard (2)
 - **Landing Page**: `GET /` - Debug interface
@@ -124,9 +123,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Templates and static file serving
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
 
-# Mount static files if directory exists
-if Path("static").exists():
-    app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Add CORS middleware
 app.add_middleware(
@@ -177,7 +173,7 @@ async def get_detection():
         )
 
 
-@app.get("/api/snapshot", tags=["Debug"])
+@app.get("/snapshot", tags=["Debug"])
 async def get_snapshot():
     """Get processed snapshot with detection overlays
 
@@ -216,7 +212,7 @@ async def get_snapshot():
         )
 
 
-@app.get("/api/frame", tags=["Debug"])
+@app.get("/frame", tags=["Debug"])
 async def get_raw_frame():
     """Get raw camera frame without processing
 
@@ -254,15 +250,8 @@ async def get_raw_frame():
             status_code=500
         )
 
-
-# EDGE SIMPLIFICATION: Zone management moved to central API
-
-
-# EDGE SIMPLIFICATION: Status merged into /health endpoint
-
-
 # Camera Control API Endpoints (now using dedicated controller)
-@app.get("/api/camera/status", response_model=CameraStatus, tags=["Debug"])
+@app.get("/camera/status", response_model=CameraStatus, tags=["Debug"])
 async def get_camera_status():
     """Get camera status for debugging - read-only
 
@@ -292,14 +281,8 @@ async def get_camera_status():
         )
 
 
-# EDGE SIMPLIFICATION: Camera settings update removed
-# @app.post("/api/camera/settings", response_model=CameraOperationResponse, tags=["Camera"])
-# async def update_camera_settings(settings: CameraSettingsRequest):
-#     """Camera settings update DISABLED for edge simplification"""
-#     pass
 
-
-@app.post("/api/camera/restart", response_model=OperationResponse, tags=["Debug"])
+@app.post("/camera/restart", response_model=OperationResponse, tags=["Debug"])
 async def restart_camera():
     """Restart camera connection for operational recovery
 
@@ -441,8 +424,8 @@ async def landing_page(request: Request):
             "api_endpoints": [
                 {"path": "/health", "description": "Service health check"},
                 {"path": "/detection", "description": "Current parking state"},
-                {"path": "/api/snapshot", "description": "Detection snapshot image"},
-                {"path": "/api/frame", "description": "Raw camera frame"},
+                {"path": "/snapshot", "description": "Detection snapshot image"},
+                {"path": "/frame", "description": "Raw camera frame"},
                 {"path": "/detections", "description": "Historical detections batch"},
                 {"path": "/config", "description": "System configuration"}
             ]

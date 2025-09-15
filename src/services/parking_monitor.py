@@ -21,7 +21,7 @@ class ParkingMonitorService:
     
     Responsibilities:
     - Service lifecycle management
-    - Detection statistics aggregation
+    - Detection statistics (minimal edge data)
     - Configuration management
     - Logging setup
     """
@@ -254,10 +254,5 @@ class ParkingMonitorService:
         """Get historical data for a specific zone"""
         return await self.storage_service.get_zone_history(zone_id, hours)
     
-    async def get_occupancy_analytics(self, hours: int = 24) -> Dict[str, Any]:
-        """Get occupancy analytics and trends"""
-        return await self.storage_service.get_occupancy_analytics(hours)
-    
-    async def export_data(self, hours: int = 24, format: str = "json") -> Any:
-        """Export historical data"""
-        return await self.storage_service.export_data(hours, format)
+    # Analytics and export functionality removed for edge simplification
+    # Central API handles data aggregation and analysis
