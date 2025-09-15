@@ -130,13 +130,13 @@ class VehicleTracker:
         
         # Apply NMS to fuse overlapping detections
         fused_detections = self._nms_fusion(all_detections)
-        
-        self.logger.debug(f"Multi-scale detection: {len(all_detections)} raw -> {len(fused_detections)} fused")
+
+        self.logger.info(f"Multi-scale detection: {len(all_detections)} raw detections -> {len(fused_detections)} after NMS fusion")
         
         return fused_detections
     
-    def _nms_fusion(self, detections: List[Dict[str, Any]], 
-                   nms_threshold: float = 0.4) -> List[Dict[str, Any]]:
+    def _nms_fusion(self, detections: List[Dict[str, Any]],
+                   nms_threshold: float = 0.7) -> List[Dict[str, Any]]:
         """
         Apply Non-Maximum Suppression to fuse overlapping detections
         Prioritizes detections with higher confidence

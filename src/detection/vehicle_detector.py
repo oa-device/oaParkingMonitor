@@ -78,29 +78,40 @@ class VehicleDetector:
             import time
             start_time = time.time()
             
-            # Adaptive confidence adjustment for hard zones
+            # Use base confidence directly - adaptive logic was causing issues
             adjusted_confidence = base_confidence
-            if zone_difficulty_map:
-                has_hard_zones = any(diff == DetectionDifficulty.HARD for diff in zone_difficulty_map.values())
-                if has_hard_zones:
-                    # Reduce confidence threshold when hard zones are present
-                    adjusted_confidence = min(0.2, base_confidence)
-                    self.logger.debug(f"Reduced confidence for hard zones: {base_confidence} -> {adjusted_confidence}")
+            self.logger.info(f"Using confidence threshold: {adjusted_confidence:.2f}")
             
             # Run inference with adjusted confidence
             results = self.model(frame, conf=adjusted_confidence, verbose=False)
-            
+
             inference_time = time.time() - start_time
             self.stats["last_inference_time"] = inference_time
             self.stats["inference_count"] += 1
-            
+
+            # DEBUG: Log raw YOLO results before filtering
+            if hasattr(results[0], 'boxes') and results[0].boxes is not None:
+                raw_count = len(results[0].boxes)
+                self.logger.info(f"YOLO raw detections: {raw_count} boxes with conf threshold={adjusted_confidence:.2f}")
+                if raw_count > 0:
+                    # Log all detection details for debugging
+                    for i, box in enumerate(results[0].boxes):
+                        conf = float(box.conf) if hasattr(box, 'conf') else 'unknown'
+                        cls = int(box.cls) if hasattr(box, 'cls') else 'unknown'
+                        self.logger.info(f"  Detection {i}: class={cls}, conf={conf:.3f}, is_vehicle={cls in self.VEHICLE_CLASSES}")
+            else:
+                self.logger.warning("YOLO returned no results or malformed results")
+
             # Extract and filter vehicle detections
             detections = self._extract_vehicle_detections(results[0])
-            
+
+            # DEBUG: Log after filtering
+            self.logger.info(f"After vehicle filtering: {len(detections)} vehicles (from {raw_count if 'raw_count' in locals() else 0} raw)")
+
             # Add adaptive confidence scores based on zone difficulty
             if zone_difficulty_map:
                 detections = self._add_adaptive_confidence(detections, zone_difficulty_map)
-            
+
             self.stats["total_detections"] = len(detections)
             self.logger.debug(f"Detected {len(detections)} vehicles in {inference_time:.3f}s")
             
