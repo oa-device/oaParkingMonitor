@@ -99,7 +99,7 @@ check_basic_health() {
     log_info "Uptime: $(format_duration "${uptime%.*}")"
     
     # Validate health status
-    if [[ "$status" == "healthy" ]]; then
+    if [[ "$status" == "ok" ]]; then
         log_success "Service is healthy!"
         return 0
     else
