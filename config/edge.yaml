@@ -1,5 +1,5 @@
-# oaParkingMonitor Edge Device Configuration
-# Simplified configuration for edge sensor with batch upload capability
+# oaParkingMonitor Simplified Edge Configuration
+# Clean 9-endpoint edge sensor configuration per TODO.md simplification plan
 
 # Deployment identifiers (typically set by Ansible and environment variables)
 deployment:
