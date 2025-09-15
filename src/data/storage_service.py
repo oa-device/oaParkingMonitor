@@ -210,62 +210,8 @@ class StorageService:
             self.logger.error(f"Failed to get zone history: {e}")
             return []
     
-    async def get_occupancy_analytics(self, hours: int = 24) -> Dict[str, Any]:
-        """Get occupancy analytics and trends"""
-        if not self.repository:
-            return {}
-        
-        try:
-            # Get occupancy trends
-            trends = await self.repository.get_occupancy_trends(hours)
-            
-            # Get zone performance
-            zone_performance = await self.repository.get_zone_performance()
-            
-            # Get system metrics
-            metrics = await self.repository.get_system_metrics(hours=1)
-            
-            # Calculate additional analytics
-            if metrics:
-                latest_metric = metrics[0]
-                system_health = {
-                    "fps": latest_metric.fps,
-                    "memory_mb": latest_metric.memory_usage_mb,
-                    "detection_latency_ms": latest_metric.detection_latency_ms,
-                    "model_loaded": latest_metric.model_loaded,
-                    "device": latest_metric.device_type
-                }
-            else:
-                system_health = {}
-            
-            return {
-                "trends": trends,
-                "zone_performance": zone_performance,
-                "system_health": system_health,
-                "analysis_period_hours": hours,
-                "generated_at": datetime.utcnow().isoformat()
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Failed to get occupancy analytics: {e}")
-            return {}
-    
-    async def export_data(self, 
-                         hours: int = 24, 
-                         format: str = "json") -> Any:
-        """Export historical data"""
-        if not self.repository:
-            return None
-        
-        try:
-            start_time = datetime.utcnow() - timedelta(hours=hours)
-            end_time = datetime.utcnow()
-            
-            return await self.repository.export_data(start_time, end_time, format)
-            
-        except Exception as e:
-            self.logger.error(f"Failed to export data: {e}")
-            return None
+    # Analytics and export methods removed for edge simplification
+    # Central API handles data aggregation and analysis
     
     async def save_system_metrics(self, metrics: Dict[str, Any]):
         """Save system performance metrics"""

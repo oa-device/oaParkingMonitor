@@ -91,7 +91,6 @@ class MVPParkingDetector:
         self.model = None
         self.last_snapshot: Optional[SnapshotResult] = None
         self.current_frame: Optional[np.ndarray] = None
-        self.last_zones_status = []  # Store latest zone analysis results
         
         # Statistics for API compatibility
         self.stats = {
@@ -328,14 +327,6 @@ class MVPParkingDetector:
                 zone["id"], zone["occupied"], time.time()
             )
 
-        # CRITICAL FIX: Update config zone status to ensure API gets fresh data
-        for zone in enhanced_zones:
-            self.config.update_zone_status(
-                zone["id"],
-                zone["occupied"],
-                zone.get("confidence", 0.0)
-            )
-
         self.logger.debug(f"Temporal smoothing applied to {len(enhanced_zones)} zones")
         return enhanced_zones
     
@@ -436,8 +427,11 @@ class MVPParkingDetector:
             # Analyze parking zones
             zones_status = self._analyze_parking_zones(detections)
 
-            # CRITICAL FIX: Store latest zones status for get_stats() API
-            self.last_zones_status = zones_status
+            # Update config with zone occupancy status
+            for zone_result in zones_status:
+                zone_id = zone_result["id"]
+                occupied = zone_result["occupied"]
+                self.config.update_zone_status(zone_id, occupied)
 
             # Create overlay image
             overlay_frame = self._draw_overlay(frame, detections, zones_status)
@@ -598,18 +592,16 @@ class MVPParkingDetector:
     
     async def get_stats(self) -> Dict[str, Any]:
         """Get current detection statistics"""
-        # CRITICAL FIX: Use live data from last snapshot results instead of stale config
-        occupied_count = sum(1 for zone in self.last_zones_status if zone.get("occupied", False))
-        total_zones = self.config.get_total_zones()
-
+        # Use new config system methods
         return {
             **self.stats,
             "snapshot_interval": self.config.processing.snapshot_interval,
             "last_snapshot_epoch": self.config.last_snapshot_epoch,
-            "total_zones": total_zones,
-            "occupied_zones": occupied_count,
-            "available_zones": total_zones - occupied_count,
-            "occupancy_rate": (occupied_count / max(1, total_zones)),
+            "total_zones": self.config.get_total_zones(),
+            "occupied_zones": sum(1 for zone in self.config.parking_zones if zone.occupied),
+            "available_zones": sum(1 for zone in self.config.parking_zones if not zone.occupied),
+            "occupancy_rate": (sum(1 for zone in self.config.parking_zones if zone.occupied) /
+                             max(1, self.config.get_total_zones())),
             "last_update_epoch": self.config.last_snapshot_epoch,
             "video_source": str(self.video_source)
         }
