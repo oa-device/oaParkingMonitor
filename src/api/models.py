@@ -22,23 +22,8 @@ from ..models import (
 )
 
 
-# Core Response Models
-class HealthResponse(BaseModel):
-    """Health check response model"""
-    status: str
-    service: str
-    version: str
-    uptime: float
-    data_epoch: float = Field(..., description="When the health data was collected")
-    request_epoch: float = Field(..., description="When the request was processed")
-
-
-class ErrorResponse(BaseModel):
-    """Standard error response model"""
-    error: str
-    message: str
-    timestamp: str
-    status_code: int
+# Import unified response models from edge.py
+from ..models.edge import HealthResponse, ErrorResponse, OperationResponse
 
 
 # Camera Control Models - imported from shared models

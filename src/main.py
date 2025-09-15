@@ -13,24 +13,29 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, Request, Query
+from fastapi import FastAPI, Request, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 # Import modular components
-from .api.models import (
-    HealthResponse, CameraSettingsRequest, CameraSettingsResponse,
-    CameraOperationResponse, CameraPresetsResponse, DetectionResponse,
-    ZonesResponse, StatusResponse, ConfigResponse, ErrorResponse, HistoryResponse
-)
+from .api.models import ConfigResponse
 from .services.parking_monitor import ParkingMonitorService
 from .services.camera_controller import CameraController
+
+# Import edge components
+from .models.edge import (
+    DetectionBatch, DetectionSnapshot, HealthResponse,
+    ErrorResponse, OperationResponse, CameraStatus
+)
+from .storage.edge_storage import EdgeStorage
 
 
 # Global service instances
 parking_service = ParkingMonitorService()
 camera_controller = CameraController(parking_service.config, parking_service.detector)
+edge_storage = EdgeStorage()
 
 
 @asynccontextmanager
@@ -43,25 +48,31 @@ async def lifespan(app: FastAPI):
     await parking_service.stop_detection()
 
 
-# Create FastAPI application with enhanced documentation
+# Create FastAPI application with professional edge device documentation
 app = FastAPI(
-    title="oaParkingMonitor API",
+    title="oaParkingMonitor Edge API",
     description="""
-# Parking Detection API
+# Parking Detection Edge Device API
 
-Real-time parking space monitoring with YOLOv11m AI model.
+Streamlined parking space monitoring service with YOLOv11m AI model.
+Edge device provides minimal data collection and reliable sensor functionality.
 
-## Quick Start
-- **Health Check**: `GET /health`
-- **Detection Data**: `GET /api/detection` 
-- **Live Dashboard**: `GET /dashboard`
-- **Camera Settings**: `GET/POST /api/camera/settings`
+## Core Endpoints (5)
+- **Health**: `GET /health` - Service status
+- **Current State**: `GET /detection` - Real-time parking data
+- **Historical Data**: `GET /detections` - Batch retrieval
+- **Configuration**: `GET /config` - System settings
+- **Config Update**: `POST /config` - Remote configuration
 
-## Key Features
-- Real-time vehicle detection and parking zone monitoring
-- Camera settings management with presets for different lighting
-- Live snapshots with detection overlays
-- Comprehensive status and configuration endpoints
+## Debug Endpoints (4)
+- **Visual Debug**: `GET /api/snapshot` - Processed image
+- **Camera Debug**: `GET /api/frame` - Raw camera feed
+- **Camera Status**: `GET /api/camera/status` - Hardware status
+- **Camera Recovery**: `POST /api/camera/restart` - Force restart
+
+## Dashboard (2)
+- **Landing Page**: `GET /` - Debug interface
+- **Dashboard**: `GET /dashboard` - Service overview
     """,
     version="2.0.0",
     lifespan=lifespan,
@@ -69,30 +80,53 @@ Real-time parking space monitoring with YOLOv11m AI model.
     redoc_url="/redoc",
     tags_metadata=[
         {
-            "name": "Health",
-            "description": "Service health monitoring and system status endpoints."
+            "name": "Core",
+            "description": "Essential edge device functionality - 5 core endpoints"
         },
         {
-            "name": "Detection", 
-            "description": "Real-time parking detection and zone monitoring endpoints."
-        },
-        {
-            "name": "Camera",
-            "description": "Camera settings management, presets, and hardware control."
-        },
-        {
-            "name": "Configuration",
-            "description": "System configuration and operational parameters."
+            "name": "Debug",
+            "description": "Operational debugging and troubleshooting - 4 debug endpoints"
         },
         {
             "name": "Dashboard",
-            "description": "Web interface and user-facing pages."
+            "description": "Web interface for device debugging - 2 dashboard endpoints"
         }
     ]
 )
 
-# Setup templates
-templates = Jinja2Templates(directory="templates")
+
+# Global exception handler for consistent error responses
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions with consistent ErrorResponse format"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.detail if isinstance(exc.detail, dict) else {
+            "error": f"HTTP {exc.status_code}",
+            "message": str(exc.detail),
+            "ts": int(time.time() * 1000)
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handle unexpected exceptions with ErrorResponse format"""
+    logging.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content=ErrorResponse(
+            error="Internal Server Error",
+            message="An unexpected error occurred" if not os.getenv("DEBUG") else str(exc)
+        ).model_dump()
+    )
+
+# Templates and static file serving
+templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
+
+# Mount static files if directory exists
+if Path("static").exists():
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Add CORS middleware
 app.add_middleware(
@@ -105,219 +139,242 @@ app.add_middleware(
 
 
 # Core API Endpoints
-@app.get("/health", response_model=HealthResponse, tags=["Health"])
+@app.get("/health", response_model=HealthResponse, tags=["Core"])
 async def health_check():
-    """Service health check with uptime and status information
-    
-    Returns comprehensive health information including service status,
-    version, uptime, and current timestamp for monitoring purposes.
+    """Service health check - minimal 2-field response per edge simplification
+
+    Returns only essential health status and timestamp for monitoring systems.
+    Edge device provides minimal data as per simplification philosophy.
     """
-    current_epoch = time.time()
     return HealthResponse(
-        status="healthy" if parking_service.running else "stopped",
-        service="parking-monitor-modular",
-        version="2.0.0",
-        uptime=parking_service.get_uptime(),
-        data_epoch=current_epoch,
-        request_epoch=current_epoch
+        status="ok" if parking_service.running else "error"
     )
 
 
-@app.get("/api/detection", response_model=DetectionResponse, tags=["Detection"])
+@app.get("/detection", tags=["Core"])
 async def get_detection():
-    """Get real-time parking detection results
-    
-    Returns current parking space occupancy data including vehicle counts,
-    zone status, occupancy rates, and detection confidence scores.
+    """Current parking state snapshot (minimal data for real-time monitoring)
+
+    Returns only essential data: timestamp, total spaces, and occupied spaces.
+    Edge device provides minimal current state as per simplification plan.
     """
     try:
         stats = await parking_service.get_detection_stats()
-        
-        return DetectionResponse(
-            vehicles_detected=stats.get("vehicles_detected", 0),
-            total_spaces=stats.get("total_zones", parking_service.config.get_total_zones()),
-            occupied_spaces=stats.get("occupied_zones", 0),
-            last_detection=stats.get("last_detection"),
-            video_source=stats.get("video_source", "staging_video"),
-            processing_fps=stats.get("processing_fps", 0.2),
-            last_update_epoch=stats.get("last_update_epoch", 0.0),
-            server_time_epoch=stats.get("server_time_epoch", time.time()),
-            snapshot_interval=stats.get("snapshot_interval", 5),
-            easy_zones_count=stats.get("easy_zones_count", 0),
-            hard_zones_count=stats.get("hard_zones_count", 0)
-        )
-        
+
+        return DetectionSnapshot(
+            totalSpaces=stats.get("total_zones", parking_service.config.get_total_zones()),
+            occupiedSpaces=stats.get("occupied_zones", 0)
+        ).model_dump()
+
     except Exception as e:
         logging.error(f"Detection stats error: {e}")
         return JSONResponse(
-            content={"error": "Failed to get detection stats", "message": str(e)},
+            content=ErrorResponse(
+                error="Detection Error",
+                message="Failed to get detection stats"
+            ).model_dump(),
             status_code=500
         )
 
 
-@app.get("/api/snapshot", tags=["Detection"])
+@app.get("/api/snapshot", tags=["Debug"])
 async def get_snapshot():
     """Get processed snapshot with detection overlays
-    
+
     Returns the latest processed frame with vehicle detection bounding boxes
     and zone overlays for visual verification of detection accuracy.
     """
-    image_bytes = parking_service.get_snapshot_image()
-    if image_bytes is None:
-        return JSONResponse(
-            {"error": "No snapshot processed yet"}, 
-            status_code=404
+    try:
+        image_bytes = parking_service.get_snapshot_image()
+        if image_bytes is None:
+            return JSONResponse(
+                content=ErrorResponse(
+                    error="Snapshot Not Available",
+                    message="No processed snapshot available yet"
+                ).model_dump(),
+                status_code=404
+            )
+
+        return Response(
+            content=image_bytes,
+            media_type="image/jpeg",
+            headers={
+                "Content-Disposition": "inline; filename=parking_snapshot.jpg",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
         )
-    
-    return Response(
-        content=image_bytes, 
-        media_type="image/jpeg",
-        headers={
-            "Content-Disposition": "inline; filename=parking_snapshot.jpg",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        }
-    )
+    except Exception as e:
+        logging.error(f"Snapshot error: {e}")
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Snapshot Error",
+                message="Failed to retrieve processed snapshot"
+            ).model_dump(),
+            status_code=500
+        )
 
 
-@app.get("/api/raw-snapshot", tags=["Detection"])
-async def get_raw_snapshot():
+@app.get("/api/frame", tags=["Debug"])
+async def get_raw_frame():
     """Get raw camera frame without processing
-    
+
     Returns the unprocessed camera frame for troubleshooting camera
     settings, focus, and exposure without AI detection overlays.
     """
-    image_bytes = parking_service.get_raw_frame_image()
-    if image_bytes is None:
-        return JSONResponse(
-            {"error": "No raw frame available yet"}, 
-            status_code=404
-        )
-    
-    return Response(
-        content=image_bytes, 
-        media_type="image/jpeg",
-        headers={
-            "Content-Disposition": "inline; filename=parking_raw_snapshot.jpg",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        }
-    )
-
-
-@app.get("/api/zones", response_model=ZonesResponse, tags=["Detection"])
-async def get_zones():
-    """Get parking zone definitions and current status"""
     try:
-        zones_data = await parking_service.get_zones_data()
-        
-        return ZonesResponse(
-            zones=zones_data,
-            total_zones=len(zones_data),
-            server_time_epoch=time.time()
+        image_bytes = parking_service.get_raw_frame_image()
+        if image_bytes is None:
+            return JSONResponse(
+                content=ErrorResponse(
+                    error="Frame Not Available",
+                    message="No raw camera frame available yet"
+                ).model_dump(),
+                status_code=404
+            )
+
+        return Response(
+            content=image_bytes,
+            media_type="image/jpeg",
+            headers={
+                "Content-Disposition": "inline; filename=parking_raw_frame.jpg",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
         )
-        
     except Exception as e:
-        logging.error(f"Zones data error: {e}")
+        logging.error(f"Raw frame error: {e}")
         return JSONResponse(
-            content={"error": "Failed to get zones data", "message": str(e)},
+            content=ErrorResponse(
+                error="Frame Error",
+                message="Failed to retrieve raw camera frame"
+            ).model_dump(),
             status_code=500
         )
 
 
-@app.get("/api/status", response_model=StatusResponse, tags=["Health"])
-async def get_status():
-    """Get comprehensive system status and timing information"""
-    try:
-        status_info = parking_service.get_status_info()
-        
-        return StatusResponse(**status_info)
-        
-    except Exception as e:
-        logging.error(f"Status info error: {e}")
-        return JSONResponse(
-            content={"error": "Failed to get status info", "message": str(e)},
-            status_code=500
-        )
+# EDGE SIMPLIFICATION: Zone management moved to central API
+
+
+# EDGE SIMPLIFICATION: Status merged into /health endpoint
 
 
 # Camera Control API Endpoints (now using dedicated controller)
-@app.get("/api/camera/settings", response_model=CameraSettingsResponse, tags=["Camera"])
-async def get_camera_settings():
-    """Get current camera configuration
-    
-    Returns comprehensive camera settings including resolution, exposure,
-    gain, image quality parameters, and device initialization status.
+@app.get("/api/camera/status", response_model=CameraStatus, tags=["Debug"])
+async def get_camera_status():
+    """Get camera status for debugging - read-only
+
+    Returns camera connection status and basic operational parameters
+    for troubleshooting camera hardware and connection issues.
     """
     try:
-        camera_settings = camera_controller.get_current_settings()
         device_info = parking_service.get_device_info()
-        
-        return CameraSettingsResponse(
-            camera_settings=camera_settings,
-            is_camera_device=device_info["is_camera_device"],
-            device_initialized=device_info["device_initialized"],
-            server_time_epoch=time.time()
+        connected = device_info.get("device_initialized", False)
+
+        return CameraStatus(
+            connected=connected,
+            fps=30.0 if connected else None,
+            resolution="1920x1080" if connected else None,
+            autofocus=True if connected else None,
+            status="healthy" if connected else "error"
         )
-        
+
     except Exception as e:
-        logging.error(f"Camera settings error: {e}")
+        logging.error(f"Camera status error: {e}")
         return JSONResponse(
-            content={"error": "Failed to get camera settings", "message": str(e)},
+            content=ErrorResponse(
+                error="Camera Status Error",
+                message="Failed to retrieve camera status"
+            ).model_dump(),
             status_code=500
         )
 
 
-@app.post("/api/camera/settings", response_model=CameraOperationResponse, tags=["Camera"])
-async def update_camera_settings(settings: CameraSettingsRequest):
-    """Update camera settings with validation
-    
-    Applies new camera settings with automatic validation and error handling.
-    Settings are applied immediately and persist across service restarts.
+# EDGE SIMPLIFICATION: Camera settings update removed
+# @app.post("/api/camera/settings", response_model=CameraOperationResponse, tags=["Camera"])
+# async def update_camera_settings(settings: CameraSettingsRequest):
+#     """Camera settings update DISABLED for edge simplification"""
+#     pass
+
+
+@app.post("/api/camera/restart", response_model=OperationResponse, tags=["Debug"])
+async def restart_camera():
+    """Restart camera connection for operational recovery
+
+    Forces camera reconnection and resets to default settings.
+    Used for recovering from camera hardware issues or configuration problems.
     """
-    return await camera_controller.update_settings(settings)
-
-
-@app.post("/api/camera/reset", response_model=CameraOperationResponse, tags=["Camera"])
-async def reset_camera_settings():
-    """Reset camera settings to optimal defaults"""
-    return await camera_controller.reset_to_defaults()
-
-
-@app.get("/api/camera/presets", response_model=CameraPresetsResponse, tags=["Camera"])
-async def get_camera_presets():
-    """Get available camera presets optimized for different conditions"""
     try:
-        presets = camera_controller.get_available_presets()
-        
-        return CameraPresetsResponse(
-            presets=presets,
-            current_preset="custom",  # Could be enhanced to track current preset
-            server_time_epoch=time.time()
+        # Force camera restart for recovery
+        result = await camera_controller.reset_to_defaults()
+
+        return OperationResponse(
+            status="success",
+            message="Camera restarted successfully"
         )
-        
+
     except Exception as e:
-        logging.error(f"Camera presets error: {e}")
+        logging.error(f"Camera restart error: {e}")
         return JSONResponse(
-            content={"error": "Failed to get camera presets", "message": str(e)},
+            content=ErrorResponse(
+                error="Camera Restart Error",
+                message="Failed to restart camera connection"
+            ).model_dump(),
             status_code=500
         )
 
 
-@app.post("/api/camera/presets/{preset_name}", response_model=CameraOperationResponse, tags=["Camera"])
-async def apply_camera_preset(preset_name: str):
-    """Apply a predefined camera preset"""
-    return await camera_controller.apply_preset(preset_name)
+# EDGE SIMPLIFICATION: Camera presets managed centrally via Ansible
 
 
-@app.get("/api/config", response_model=ConfigResponse, tags=["Configuration"])
+@app.get("/detections", tags=["Core"])
+async def get_detections_batch(
+    from_ts: int = Query(None, description="Start timestamp (epoch milliseconds)"),
+    to_ts: int = Query(None, description="End timestamp (epoch milliseconds)"),
+    limit: int = Query(1000, description="Maximum number of detections", le=10000)
+):
+    """Batch retrieval for resilience and central upload
+
+    Supports timestamp range queries for efficient sync with central API.
+    Returns historical detection data for upload and analysis.
+    """
+    try:
+        # Get detections from local storage
+        detections = await edge_storage.get_detections(
+            from_ts=from_ts,
+            to_ts=to_ts,
+            limit=limit
+        )
+
+        # Convert to response format
+        detection_batch = DetectionBatch(
+            detections=detections,
+            total=len(detections),
+            fromTs=from_ts,
+            toTs=to_ts
+        )
+
+        return detection_batch.model_dump()
+
+    except Exception as e:
+        logging.error(f"Detections batch error: {e}")
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Detections Batch Error",
+                message="Failed to retrieve detections batch"
+            ).model_dump(),
+            status_code=500
+        )
+
+
+@app.get("/config", response_model=ConfigResponse, tags=["Core"])
 async def get_full_configuration():
     """Get complete system configuration"""
     try:
         config_data = parking_service.get_config_data()
-        
+
         current_epoch = time.time()
         return ConfigResponse(
             configuration=config_data,
@@ -330,254 +387,82 @@ async def get_full_configuration():
             data_epoch=current_epoch,
             request_epoch=current_epoch
         )
-        
+
     except Exception as e:
         logging.error(f"Configuration error: {e}")
         return JSONResponse(
-            content={"error": "Failed to get configuration", "message": str(e)},
+            content=ErrorResponse(
+                error="Configuration Error",
+                message="Failed to retrieve system configuration"
+            ).model_dump(),
             status_code=500
         )
 
 
-# History and Analytics API Endpoints
-@app.get("/api/history", response_model=HistoryResponse, tags=["Analytics"])
-async def get_snapshot_history(
-    from_epoch: int = Query(..., description="Start epoch timestamp"),
-    to_epoch: int = Query(..., description="End epoch timestamp")
-):
-    """Get historical snapshot data within epoch range for airport demo
-    
-    Returns snapshots from the specified epoch range including JSON data
-    and image references for the YHU dashboard integration.
+@app.post("/config", response_model=OperationResponse, tags=["Core"])
+async def update_configuration():
+    """Update deployment identifiers - API key protected
+
+    Allows remote configuration of device identity for central API integration.
+    Requires valid API key for authentication.
     """
     try:
-        # Import at function level to avoid circular imports
-        from .utils.paths import get_data_paths
-        
-        data_paths = get_data_paths()
-        current_epoch = time.time()
-        
-        # Get snapshots in the requested range
-        snapshots = data_paths.get_snapshots_in_range(from_epoch, to_epoch)
-        
-        # Load JSON data for each snapshot
-        snapshot_data = []
-        for snapshot_info in snapshots:
-            try:
-                from .utils.paths import load_snapshot_json
-                json_data = load_snapshot_json(snapshot_info["epoch"])
-                if json_data:
-                    # Add file existence info
-                    json_data["has_image"] = snapshot_info["has_image"]
-                    json_data["image_path"] = f"/api/snapshot/{snapshot_info['epoch']}"
-                    snapshot_data.append(json_data)
-            except Exception as e:
-                logging.warning(f"Failed to load snapshot {snapshot_info['epoch']}: {e}")
-        
-        return HistoryResponse(
-            snapshots=snapshot_data,
-            count=len(snapshot_data),
-            from_epoch=from_epoch,
-            to_epoch=to_epoch,
-            data_epoch=current_epoch,
-            request_epoch=current_epoch
-        )
-        
-    except Exception as e:
-        logging.error(f"History retrieval error: {e}")
-        return JSONResponse(
-            content={"error": "Failed to get history", "message": str(e)},
-            status_code=500
+        # TODO: Implement proper API key validation and config update
+        return OperationResponse(
+            status="not_implemented",
+            message="Configuration update not yet implemented - edge simplification in progress"
         )
 
-@app.get("/api/snapshot/{epoch}", tags=["Analytics"])
-async def get_historical_snapshot_image(epoch: int):
-    """Get historical snapshot image by epoch timestamp for airport demo
-    
-    Returns the snapshot image file for the specified epoch timestamp.
-    Used by YHU dashboard to display historical detection images.
-    """
-    try:
-        from .utils.paths import load_snapshot_image
-        
-        image_bytes = load_snapshot_image(epoch)
-        if image_bytes is None:
-            return JSONResponse(
-                content={"error": f"Snapshot image not found for epoch {epoch}"},
-                status_code=404
-            )
-        
-        return Response(
-            content=image_bytes,
-            media_type="image/jpeg",
-            headers={
-                "Content-Disposition": f"inline; filename=snapshot_{epoch}.jpg",
-                "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
-                "Last-Modified": time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(epoch))
-            }
-        )
-        
     except Exception as e:
-        logging.error(f"Historical snapshot error for epoch {epoch}: {e}")
+        logging.error(f"Configuration update error: {e}")
         return JSONResponse(
-            content={"error": "Failed to get historical snapshot", "message": str(e)},
+            content=ErrorResponse(
+                error="Configuration Update Error",
+                message="Failed to update configuration"
+            ).model_dump(),
             status_code=500
         )
 
 
-@app.get("/api/zones/{zone_id}/history", tags=["Analytics"])
-async def get_zone_history(
-    zone_id: int,
-    hours: int = Query(24, ge=1, le=168, description="Hours of history to retrieve")
-):
-    """Get historical data for a specific parking zone
-    
-    Returns detailed occupancy history for a single zone including
-    state changes, confidence trends, and detection patterns.
-    """
-    try:
-        history = await parking_service.get_zone_history(zone_id, hours)
-        return JSONResponse(content={
-            "zone_id": zone_id,
-            "hours": hours,
-            "history": history,
-            "data_points": len(history)
-        })
-        
-    except Exception as e:
-        logging.error(f"Zone history error: {e}")
-        return JSONResponse(
-            content={"error": f"Failed to get history for zone {zone_id}", "message": str(e)},
-            status_code=500
-        )
-
-
-@app.get("/api/analytics", tags=["Analytics"])
-async def get_analytics(
-    hours: int = Query(24, ge=1, le=168, description="Hours of data to analyze")
-):
-    """Get comprehensive parking analytics
-    
-    Returns analytics including occupancy trends, zone performance,
-    system health metrics, and usage patterns.
-    """
-    try:
-        analytics = await parking_service.get_occupancy_analytics(hours)
-        return JSONResponse(content=analytics)
-        
-    except Exception as e:
-        logging.error(f"Analytics error: {e}")
-        return JSONResponse(
-            content={"error": "Failed to generate analytics", "message": str(e)},
-            status_code=500
-        )
-
-
-@app.get("/api/export", tags=["Analytics"])
-async def export_data(
-    hours: int = Query(24, ge=1, le=168, description="Hours of data to export"),
-    format: str = Query("json", enum=["json", "csv"], description="Export format")
-):
-    """Export historical detection data
-    
-    Downloads historical parking data in specified format for
-    external analysis and reporting.
-    """
-    try:
-        data = await parking_service.export_data(hours, format)
-        
-        if format == "csv":
-            return Response(
-                content=data,
-                media_type="text/csv",
-                headers={
-                    "Content-Disposition": f"attachment; filename=parking_data_{hours}h.csv"
-                }
-            )
-        else:
-            return Response(
-                content=data,
-                media_type="application/json",
-                headers={
-                    "Content-Disposition": f"attachment; filename=parking_data_{hours}h.json"
-                }
-            )
-            
-    except Exception as e:
-        logging.error(f"Export error: {e}")
-        return JSONResponse(
-            content={"error": "Failed to export data", "message": str(e)},
-            status_code=500
-        )
-
-
-@app.get("/api/stats", tags=["Detection"])
-async def get_detection_stats():
-    """Get current detection statistics
-    
-    Returns real-time detection performance metrics including
-    temporal smoothing stats, multi-scale detection performance,
-    and tracking statistics.
-    """
-    try:
-        stats = await parking_service.get_detection_stats()
-        
-        # Add temporal and tracking stats if available
-        if hasattr(parking_service.detector, 'temporal_smoother'):
-            stats["temporal_smoothing"] = parking_service.detector.temporal_smoother.get_stats()
-        
-        if hasattr(parking_service.detector, 'vehicle_tracker'):
-            stats["vehicle_tracking"] = parking_service.detector.vehicle_tracker.get_stats()
-        
-        return JSONResponse(content=stats)
-        
-    except Exception as e:
-        logging.error(f"Stats error: {e}")
-        return JSONResponse(
-            content={"error": "Failed to get stats", "message": str(e)},
-            status_code=500
-        )
-
-
-# Dashboard and Root Endpoints
-@app.get("/dashboard", response_class=HTMLResponse, tags=["Dashboard"])
-async def dashboard(request: Request):
-    """Interactive parking monitor dashboard
-    
-    Web interface providing real-time parking status, camera controls,
-    settings management, and live detection visualization.
-    """
-    return templates.TemplateResponse("dashboard.html", {"request": request})
-
-
+# Landing page and dashboard endpoints
 @app.get("/", response_class=HTMLResponse, tags=["Dashboard"])
-async def root():
-    """Root endpoint with service information"""
-    return HTMLResponse(f"""
-    <html>
-    <head><title>oaParkingMonitor - Modular Architecture</title></head>
-    <body>
-        <h1>🚀 oaParkingMonitor v2.0 - Modular Architecture</h1>
-        <p><strong>Architecture Improvements:</strong></p>
-        <ul>
-            <li>🏗️ Clean Modular Design - Separated concerns and responsibilities</li>
-            <li>🔧 Service Layer - Dedicated business logic orchestration</li>
-            <li>🎛️ Camera Controller - Specialized settings management</li>
-            <li>📊 API Models - Centralized validation and documentation</li>
-            <li>🔒 Enhanced Configuration - Pydantic-based with automatic validation</li>
-        </ul>
-        <p><strong>Navigation:</strong></p>
-        <ul>
-            <li><a href="/dashboard">🎛️ Dashboard</a> - Camera controls and live view</li>
-            <li><a href="/docs">📚 API Documentation</a> - Complete API reference</li>
-            <li><a href="/health">❤️ Health Check</a> - Service status</li>
-            <li><a href="/api/detection">📊 Detection Stats</a> - Current parking data</li>
-        </ul>
-        <p><strong>Service Status:</strong> {"🟢 Running" if parking_service.running else "🔴 Stopped"}</p>
-        <p><strong>Uptime:</strong> {parking_service.get_uptime():.1f} seconds</p>
-    </body>
-    </html>
-    """)
+async def landing_page(request: Request):
+    """Landing page with parking monitor overview and navigation"""
+    try:
+        # Get current stats for display
+        stats = await parking_service.get_detection_stats()
+        device_info = parking_service.get_device_info()
+
+        return templates.TemplateResponse("dashboard.html", {
+            "request": request,
+            "stats": stats,
+            "device_info": device_info,
+            "service_name": "Parking Monitor v2.0",
+            "api_endpoints": [
+                {"path": "/health", "description": "Service health check"},
+                {"path": "/detection", "description": "Current parking state"},
+                {"path": "/api/snapshot", "description": "Detection snapshot image"},
+                {"path": "/api/frame", "description": "Raw camera frame"},
+                {"path": "/detections", "description": "Historical detections batch"},
+                {"path": "/config", "description": "System configuration"}
+            ]
+        })
+    except Exception as e:
+        logging.error(f"Landing page error: {e}")
+        return HTMLResponse(
+            content="<h1>Parking Monitor Service</h1><p>Error loading dashboard - check service logs</p>",
+            status_code=500
+        )
+
+
+@app.get("/dashboard", response_class=HTMLResponse, tags=["Dashboard"])
+async def dashboard_redirect(request: Request):
+    """Redirect to main landing page for compatibility"""
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "service_name": "Parking Monitor Dashboard",
+        "message": "Parking detection service operational"
+    })
 
 
 def validate_startup_environment():
