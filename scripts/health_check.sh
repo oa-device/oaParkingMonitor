@@ -109,116 +109,125 @@ check_basic_health() {
     fi
 }
 
-# Detailed health check
+# Simplified detailed health check using edge endpoints only
 check_detailed_health() {
     log_header "Detailed Health Check"
     
-    # Get detailed health information
-    local detailed_response
-    if ! detailed_response=$(api_call "/api/health/detailed" "detailed health check" "$HOST" "$PORT" "$TIMEOUT"); then
-        log_warn "Detailed health endpoint not available"
+    # Get configuration for system info
+    local config_response
+    if ! config_response=$(api_call "/config" "configuration check" "$HOST" "$PORT" "$TIMEOUT"); then
+        log_warn "Configuration endpoint not available"
         return 0
     fi
     
-    # Parse detailed metrics
-    local health_score cpu_percent memory_percent error_count
-    local model_loaded device metal_available
+    # Parse configuration data
+    local software_version hostname total_spaces model_path
+    software_version=$(parse_json "$config_response" ".version.software" "unknown")
+    hostname=$(parse_json "$config_response" ".version.hostname" "unknown")
+    total_spaces=$(parse_json "$config_response" ".device.totalSpaces" "0")
+    model_path=$(parse_json "$config_response" ".device.modelPath" "unknown")
     
-    health_score=$(parse_json "$detailed_response" ".health_score" "0")
-    cpu_percent=$(parse_json "$detailed_response" ".system.cpu_percent" "0")
-    memory_percent=$(parse_json "$detailed_response" ".system.memory_percent" "0")
-    error_count=$(parse_json "$detailed_response" ".system.error_count" "0")
-    model_loaded=$(parse_json "$detailed_response" ".detector.model_loaded" "false")
-    device=$(parse_json "$detailed_response" ".detector.device" "unknown")
-    metal_available=$(parse_json "$detailed_response" ".detector.metal_available" "false")
+    log_info "Software version: $software_version"
+    log_info "Hostname: $hostname"
+    log_info "Total spaces: $total_spaces"
+    log_info "Model path: $model_path"
     
-    log_info "Health score: ${health_score}/100"
-    log_info "CPU usage: ${cpu_percent}%"
-    log_info "Memory usage: ${memory_percent}%"
-    log_info "Error count: $error_count"
-    log_info "Model loaded: $model_loaded"
-    log_info "Device: $device"
-    log_info "Metal available: $metal_available"
-    
-    # Validate thresholds
-    local warnings=0
-    
-    if (( $(echo "$health_score < 70" | bc -l 2>/dev/null || echo "0") )); then
-        log_warn "Health score below threshold: $health_score"
-        ((warnings++))
-    fi
-    
-    if (( $(echo "$cpu_percent > 80" | bc -l 2>/dev/null || echo "0") )); then
-        log_warn "High CPU usage: ${cpu_percent}%"
-        ((warnings++))
-    fi
-    
-    if (( $(echo "$memory_percent > 85" | bc -l 2>/dev/null || echo "0") )); then
-        log_warn "High memory usage: ${memory_percent}%"
-        ((warnings++))
-    fi
-    
-    if [[ "$model_loaded" != "true" ]]; then
-        log_warn "AI model not loaded"
-        ((warnings++))
-    fi
-    
-    if [[ "$error_count" != "0" ]]; then
-        log_warn "Service has recorded $error_count errors"
-        ((warnings++))
-    fi
-    
-    if [[ $warnings -eq 0 ]]; then
-        log_success "All detailed checks passed!"
+    # Get current detection data
+    local detection_response
+    if detection_response=$(api_call "/detection" "current detection" "$HOST" "$PORT" "$TIMEOUT"); then
+        local occupied_spaces occupancy_rate
+        occupied_spaces=$(parse_json "$detection_response" ".occupiedSpaces" "0")
+        
+        if [[ "$total_spaces" != "0" ]]; then
+            occupancy_rate=$(echo "scale=1; $occupied_spaces * 100 / $total_spaces" | bc -l 2>/dev/null || echo "0")
+        else
+            occupancy_rate="0"
+        fi
+        
+        log_info "Occupied spaces: $occupied_spaces"
+        log_info "Occupancy rate: ${occupancy_rate}%"
     else
-        log_warn "Detailed checks completed with $warnings warning(s)"
+        log_warn "Detection endpoint not responding"
     fi
     
-    return $warnings
+    # Check camera status if available
+    local camera_response
+    if camera_response=$(api_call "/camera/status" "camera status" "$HOST" "$PORT" "$TIMEOUT"); then
+        local camera_connected fps resolution
+        camera_connected=$(parse_json "$camera_response" ".connected" "false")
+        fps=$(parse_json "$camera_response" ".fps" "0")
+        resolution=$(parse_json "$camera_response" ".resolution" "unknown")
+        
+        log_info "Camera connected: $camera_connected"
+        log_info "Camera FPS: $fps"
+        log_info "Camera resolution: $resolution"
+        
+        # Validate camera health
+        if [[ "$camera_connected" != "true" ]]; then
+            log_warn "Camera not connected"
+        fi
+        
+        if (( $(echo "$fps < 15" | bc -l 2>/dev/null || echo "0") )); then
+            log_warn "Low camera FPS: $fps"
+        fi
+    else
+        log_warn "Camera status endpoint not available"
+    fi
+    
+    log_success "Detailed edge health check completed"
+    return 0
 }
 
-# Performance metrics check
+# Edge device performance check using available endpoints
 check_performance() {
-    log_header "Performance Metrics"
+    log_header "Edge Performance Check"
     
-    # Get performance metrics
-    local perf_response
-    if ! perf_response=$(api_call "/api/performance" "performance metrics" "$HOST" "$PORT" "$TIMEOUT"); then
-        log_warn "Performance endpoint not available"
-        return 0
-    fi
+    # Test core endpoint response times
+    local start_time end_time response_time
     
-    # Parse performance data
-    local avg_inference memory_gb temperature processing_fps
-    
-    avg_inference=$(parse_json "$perf_response" ".inference_stats.avg_ms" "0")
-    memory_gb=$(parse_json "$perf_response" ".performance.memory_usage_gb" "0")
-    temperature=$(parse_json "$perf_response" ".performance.temperature" "0")
-    
-    # Get detection stats
-    local stats_response
-    if stats_response=$(api_call "/api/stats" "detection statistics" "$HOST" "$PORT" "$TIMEOUT"); then
-        processing_fps=$(parse_json "$stats_response" ".processing_fps" "0")
+    # Test /health endpoint response time
+    start_time=$(date +%s%N | cut -c1-13)
+    if api_call "/health" "health response time test" "$HOST" "$PORT" "$TIMEOUT" >/dev/null; then
+        end_time=$(date +%s%N | cut -c1-13)
+        response_time=$((end_time - start_time))
+        log_info "Health endpoint response time: ${response_time}ms"
+        
+        if [[ $response_time -gt 1000 ]]; then
+            log_warn "Slow health endpoint response: ${response_time}ms"
+        fi
     else
-        processing_fps="0"
+        log_warn "Health endpoint not responding"
     fi
     
-    log_info "Average inference time: ${avg_inference}ms"
-    log_info "Memory usage: ${memory_gb}GB"
-    log_info "Processing FPS: $processing_fps"
-    if [[ "$temperature" != "0" ]]; then
-        log_info "Temperature: ${temperature}°C"
+    # Test /detection endpoint response time
+    start_time=$(date +%s%N | cut -c1-13)
+    if api_call "/detection" "detection response time test" "$HOST" "$PORT" "$TIMEOUT" >/dev/null; then
+        end_time=$(date +%s%N | cut -c1-13)
+        response_time=$((end_time - start_time))
+        log_info "Detection endpoint response time: ${response_time}ms"
+        
+        if [[ $response_time -gt 2000 ]]; then
+            log_warn "Slow detection endpoint response: ${response_time}ms"
+        fi
+    else
+        log_warn "Detection endpoint not responding"
     fi
     
-    # Performance warnings
-    if (( $(echo "$avg_inference > 100" | bc -l 2>/dev/null || echo "0") )); then
-        log_warn "High inference time: ${avg_inference}ms"
+    # Test /config endpoint response time
+    start_time=$(date +%s%N | cut -c1-13)
+    if api_call "/config" "config response time test" "$HOST" "$PORT" "$TIMEOUT" >/dev/null; then
+        end_time=$(date +%s%N | cut -c1-13)
+        response_time=$((end_time - start_time))
+        log_info "Config endpoint response time: ${response_time}ms"
+        
+        if [[ $response_time -gt 1000 ]]; then
+            log_warn "Slow config endpoint response: ${response_time}ms"
+        fi
+    else
+        log_warn "Config endpoint not responding"
     fi
     
-    if (( $(echo "$processing_fps < 10" | bc -l 2>/dev/null || echo "0") )); then
-        log_warn "Low processing FPS: $processing_fps"
-    fi
-    
+    log_success "Edge performance check completed"
     return 0
 }
 
