@@ -13,6 +13,8 @@ from typing import Optional, Dict, Any, List
 from ..config import ParkingConfig, ConfigManager
 from ..detector import MVPParkingDetector
 from ..data import StorageService
+from ..storage.edge_storage import EdgeStorage
+from ..models.edge import Detection
 
 
 class ParkingMonitorService:
@@ -39,6 +41,9 @@ class ParkingMonitorService:
         
         # Initialize storage service for data persistence
         self.storage_service = StorageService()
+
+        # Initialize edge storage for detections API
+        self.edge_storage = EdgeStorage()
         
         # Setup logging from configuration
         self._setup_logging()
@@ -67,6 +72,9 @@ class ParkingMonitorService:
             # Initialize storage service
             await self.storage_service.initialize()
             self.logger.info("Storage service initialized")
+
+            # Edge storage initializes automatically in constructor
+            self.logger.info("Edge storage ready")
             
             # Start detector snapshot loop in background
             detection_task = asyncio.create_task(self.detector.start_snapshot_loop())
@@ -225,6 +233,29 @@ class ParkingMonitorService:
                         zones_status=snapshot.zones_status,
                         processing_time=snapshot.processing_time
                     )
+
+                    # ALSO store in EdgeStorage for /detections API
+                    occupied_spaces = sum(1 for zone in snapshot.zones_status if zone.get("occupied", False))
+                    total_spaces = len(snapshot.zones_status)
+
+                    # Use environment variables for deployment info (fallback for edge config)
+                    import os
+                    detection = Detection(
+                        ts=int(snapshot.timestamp * 1000),
+                        customerId=os.getenv("CUSTOMER_ID", "default-customer"),
+                        siteId=os.getenv("SITE_ID", "default-site"),
+                        zoneId=os.getenv("ZONE_ID", "default-zone"),
+                        cameraId=os.getenv("CAMERA_ID", "default-camera"),
+                        totalSpaces=total_spaces,
+                        occupiedSpaces=occupied_spaces,
+                        uploaded=False
+                    )
+
+                    edge_success = await self.edge_storage.store_detection(detection)
+                    if edge_success:
+                        self.logger.debug(f"EdgeStorage: Stored detection {occupied_spaces}/{total_spaces}")
+                    else:
+                        self.logger.error("Failed to store detection in EdgeStorage")
                     
                     # Save system metrics
                     stats = await self.detector.get_stats()
