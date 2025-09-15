@@ -30,7 +30,7 @@ class DataPaths:
             self.base_data_dir = Path.home() / "orangead" / "data"
         
         # Core directory structure
-        self.parking_monitor_dir = self.base_data_dir / "parking_monitor"
+        self.parking_monitor_dir = self.base_data_dir / "oaParkingMonitor"  # Unified naming
         self.database_dir = self.parking_monitor_dir / "database"
         self.snapshots_dir = self.parking_monitor_dir / "snapshots"
         self.json_snapshots_dir = self.snapshots_dir / "json"
@@ -65,12 +65,12 @@ class DataPaths:
     @property
     def database_path(self) -> Path:
         """SQLite database file path"""
-        return self.database_dir / "parking_monitor.db"
+        return self.database_dir / "oaParkingMonitor.db"  # Unified naming
     
     @property
     def legacy_database_path(self) -> Path:
         """Legacy database path for migration"""
-        return self.legacy_project_data_dir / "parking_monitor.db"
+        return self.legacy_project_data_dir / "oaParkingMonitor.db"  # Unified naming
     
     def get_json_snapshot_path(self, epoch: int) -> Path:
         """Get path for JSON snapshot file"""
