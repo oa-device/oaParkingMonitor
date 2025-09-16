@@ -51,6 +51,7 @@ dependencies = [
     # Configuration and Logging
     "pyyaml>=6.0.0",
     "structlog>=23.0.0",
+    "python-dotenv>=1.0.0",
     # Testing dependencies moved to dev section
     "uuid-utils>=0.11.0",
 ]
