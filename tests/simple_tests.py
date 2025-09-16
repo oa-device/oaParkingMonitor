@@ -32,11 +32,11 @@ def test_basic_model_validation():
         video = VideoSource(source="")
         assert video.source == "0", f"Expected source '0', got '{video.source}'"
         
-        print("✅ Basic model validation working")
+        print("[OK] Basic model validation working")
         return True
         
     except Exception as e:
-        print(f"❌ Basic model validation failed: {e}")
+        print(f"[FAIL] Basic model validation failed: {e}")
         return False
 
 def test_config_loading():
@@ -66,11 +66,11 @@ def test_config_loading():
         assert config.get_easy_zones_count() == 1
         assert config.get_hard_zones_count() == 0
         
-        print("✅ Configuration loading working")
+        print("[OK] Configuration loading working")
         return True
         
     except Exception as e:
-        print(f"❌ Configuration loading failed: {e}")
+        print(f"[FAIL] Configuration loading failed: {e}")
         return False
 
 def test_settings_applicator_logic():
@@ -97,11 +97,11 @@ def test_settings_applicator_logic():
         }
         assert applicator.validate_settings_structure(invalid_structure) is False
         
-        print("✅ Settings applicator working")
+        print("[OK] Settings applicator working")
         return True
         
     except Exception as e:
-        print(f"❌ Settings applicator failed: {e}")
+        print(f"[FAIL] Settings applicator failed: {e}")
         return False
 
 def test_data_accessor_logic():
@@ -132,11 +132,11 @@ def test_data_accessor_logic():
         assert "resolution" in camera_settings
         assert camera_settings["resolution"]["width"] == 1920
         
-        print("✅ Data accessor working")
+        print("[OK] Data accessor working")
         return True
         
     except Exception as e:
-        print(f"❌ Data accessor failed: {e}")
+        print(f"[FAIL] Data accessor failed: {e}")
         return False
 
 def test_model_factory_creation():
@@ -162,11 +162,11 @@ def test_model_factory_creation():
         instance = resolution_model(width=1920, height=1080, fps=30)
         assert instance.width == 1920
         
-        print("✅ Model factory working")
+        print("[OK] Model factory working")
         return True
         
     except Exception as e:
-        print(f"❌ Model factory failed: {e}")
+        print(f"[FAIL] Model factory failed: {e}")
         return False
 
 def test_import_structure():
@@ -185,20 +185,20 @@ def test_import_structure():
         from services.preset_loader import PresetLoader
         
         # Test utility imports
-        from utils.schema_generator import SchemaGenerator
+        # schema_generator removed - was unused
         
-        print("✅ All imports working correctly")
+        print("[OK] All imports working correctly")
         return True
         
     except Exception as e:
-        print(f"❌ Import structure failed: {e}")
+        print(f"[FAIL] Import structure failed: {e}")
         import traceback
         traceback.print_exc()
         return False
 
 def run_architecture_validation():
     """Validate the complete architecture works"""
-    print("\n🏗️ Validating Complete Architecture")
+    print("\n[ARCH] Validating Complete Architecture")
     print("=" * 40)
     
     try:
@@ -221,11 +221,11 @@ def run_architecture_validation():
         zones_data = config.get_zones_data()
         assert isinstance(zones_data, list)
         
-        print("✅ Complete architecture validated")
+        print("[OK] Complete architecture validated")
         return True
         
     except Exception as e:
-        print(f"❌ Architecture validation failed: {e}")
+        print(f"[FAIL] Architecture validation failed: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -250,7 +250,7 @@ def main():
     total = len(tests)
     
     for test_name, test_func in tests:
-        print(f"🔍 {test_name}")
+        print(f"[TEST] {test_name}")
         print("-" * 30)
         if test_func():
             passed += 1
@@ -262,16 +262,16 @@ def main():
     if passed == total:
         print("\n🎉 ALL TESTS PASSED!")
         print("\n✨ oaParkingMonitor Status: CLEAN & READY")
-        print("  ✅ Architecture validated")
-        print("  ✅ No physical dependencies in tests")
-        print("  ✅ Future-proof structure confirmed")
-        print("  ✅ Zero maintenance burden achieved")
-        print("  ✅ Professional structure maintained")
+        print("  [OK] Architecture validated")
+        print("  [OK] No physical dependencies in tests")
+        print("  [OK] Future-proof structure confirmed")
+        print("  [OK] Zero maintenance burden achieved")
+        print("  [OK] Professional structure maintained")
         
         print("\n🚀 Ready for production deployment!")
         return 0
     else:
-        print(f"\n❌ {total - passed} tests failed - needs attention")
+        print(f"\n[FAIL] {total - passed} tests failed - needs attention")
         return 1
 
 if __name__ == "__main__":
