@@ -12,7 +12,6 @@ from typing import Optional, Dict, Any, List
 
 from ..config import ParkingConfig, ConfigManager
 from ..detector import MVPParkingDetector
-from ..data import StorageService
 from ..storage.edge_storage import EdgeStorage
 from ..models.edge import Detection
 
@@ -39,9 +38,6 @@ class ParkingMonitorService:
         self.running = False
         self.start_time = datetime.now()
         
-        # Initialize storage service for data persistence
-        self.storage_service = StorageService()
-
         # Initialize edge storage for detections API
         self.edge_storage = EdgeStorage()
         
@@ -69,10 +65,6 @@ class ParkingMonitorService:
             self.running = True
             self.logger.info("Starting parking detection service...")
             
-            # Initialize storage service
-            await self.storage_service.initialize()
-            self.logger.info("Storage service initialized")
-
             # Edge storage initializes automatically in constructor
             self.logger.info("Edge storage ready")
             
@@ -97,8 +89,7 @@ class ParkingMonitorService:
             
             await self.detector.stop()
             
-            # Shutdown storage service
-            await self.storage_service.shutdown()
+            # EdgeStorage cleanup happens automatically
             
             self.logger.info("Parking detection service stopped successfully")
             
@@ -227,14 +218,7 @@ class ParkingMonitorService:
                             "vehicle_type": det.class_name
                         })
                     
-                    # Store in database
-                    await self.storage_service.store_detection_result(
-                        detections=detections,
-                        zones_status=snapshot.zones_status,
-                        processing_time=snapshot.processing_time
-                    )
-
-                    # ALSO store in EdgeStorage for /detections API
+                    # Store detection in EdgeStorage
                     occupied_spaces = sum(1 for zone in snapshot.zones_status if zone.get("occupied", False))
                     total_spaces = len(snapshot.zones_status)
 
@@ -256,18 +240,8 @@ class ParkingMonitorService:
                         self.logger.debug(f"EdgeStorage: Stored detection {occupied_spaces}/{total_spaces}")
                     else:
                         self.logger.error("Failed to store detection in EdgeStorage")
-                    
-                    # Save system metrics
-                    stats = await self.detector.get_stats()
-                    await self.storage_service.save_system_metrics({
-                        "fps": stats.get("processing_fps", 0),
-                        "memory_usage_mb": self._get_memory_usage_mb(),
-                        "detection_latency_ms": snapshot.processing_time * 1000,
-                        "total_frames": stats.get("total_frames", 0),
-                        "vehicles_detected": stats.get("vehicles_detected", 0),
-                        "model_loaded": stats.get("model_loaded", False),
-                        "device_type": stats.get("device_info", {}).get("device", "cpu")
-                    })
+
+                    # System metrics are now available through get_detection_stats() API
                     
             except Exception as e:
                 self.logger.error(f"Storage loop error: {e}")
@@ -281,9 +255,6 @@ class ParkingMonitorService:
         except:
             return 0.0
     
-    async def get_zone_history(self, zone_id: int, hours: int = 24) -> List[Dict[str, Any]]:
-        """Get historical data for a specific zone"""
-        return await self.storage_service.get_zone_history(zone_id, hours)
     
     # Analytics and export functionality removed for edge simplification
     # Central API handles data aggregation and analysis

@@ -5,7 +5,6 @@ This module provides a single source of truth for all data paths, supporting
 the airport demo requirement to store data outside the project directory.
 """
 
-import os
 from pathlib import Path
 from typing import Optional
 import logging
@@ -37,8 +36,6 @@ class DataPaths:
         self.image_snapshots_dir = self.snapshots_dir / "images"
         self.exports_dir = self.parking_monitor_dir / "exports"
         
-        # Legacy paths for backward compatibility
-        self.legacy_project_data_dir = Path.home() / "orangead" / "oaParkingMonitor" / "data"
         
         # Create directories if they don't exist
         self._ensure_directories()
@@ -64,13 +61,8 @@ class DataPaths:
     
     @property
     def database_path(self) -> Path:
-        """SQLite database file path"""
+        """SQLite database file path (legacy, replaced by EdgeStorage)"""
         return self.database_dir / "oaParkingMonitor.db"  # Unified naming
-    
-    @property
-    def legacy_database_path(self) -> Path:
-        """Legacy database path for migration"""
-        return self.legacy_project_data_dir / "oaParkingMonitor.db"  # Unified naming
     
     def get_json_snapshot_path(self, epoch: int) -> Path:
         """Get path for JSON snapshot file"""
@@ -84,30 +76,6 @@ class DataPaths:
         """Get path for export file"""
         return self.exports_dir / filename
     
-    def migrate_legacy_database(self) -> bool:
-        """
-        Migrate database from legacy location to new location.
-        
-        Returns:
-            True if migration was successful or not needed
-        """
-        if not self.legacy_database_path.exists():
-            logger.info("No legacy database found, skipping migration")
-            return True
-        
-        if self.database_path.exists():
-            logger.info(f"Database already exists at {self.database_path}, skipping migration")
-            return True
-        
-        try:
-            import shutil
-            logger.info(f"Migrating database from {self.legacy_database_path} to {self.database_path}")
-            shutil.copy2(self.legacy_database_path, self.database_path)
-            logger.info("Database migration completed successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Database migration failed: {e}")
-            return False
     
     def cleanup_old_snapshots(self, days_to_keep: int = 30) -> int:
         """
@@ -190,7 +158,6 @@ class DataPaths:
             "total_json_files": len(list(self.json_snapshots_dir.glob("*.json"))),
             "total_image_files": len(list(self.image_snapshots_dir.glob("*.jpg"))),
             "database_exists": self.database_path.exists(),
-            "legacy_database_exists": self.legacy_database_path.exists()
         }
         
         # Calculate directory sizes
@@ -233,10 +200,6 @@ def initialize_data_paths(base_dir: Optional[str] = None) -> DataPaths:
 
 
 # Convenience functions for common operations
-def get_database_url() -> str:
-    """Get SQLite database URL for SQLAlchemy"""
-    db_path = data_paths.database_path
-    return f"sqlite+aiosqlite:///{db_path}"
 
 
 def save_snapshot_json(epoch: int, data: dict) -> bool:
