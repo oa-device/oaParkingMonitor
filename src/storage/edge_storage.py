@@ -162,21 +162,43 @@ class EdgeStorage:
     async def get_detections(self,
                            from_ts: Optional[int] = None,
                            to_ts: Optional[int] = None,
-                           limit: int = 1000,
-                           uploaded_only: Optional[bool] = None) -> List[Detection]:
+                           limit: int = 100,
+                           uploaded_only: Optional[bool] = None,
+                           sort_order: str = "desc") -> List[Detection]:
         """
-        Retrieve detections based on timestamp range
+        Retrieve detections based on timestamp range with professional defaults
 
         Args:
-            from_ts: Start timestamp (inclusive)
-            to_ts: End timestamp (inclusive)
-            limit: Maximum number of detections to return
+            from_ts: Start timestamp (inclusive, milliseconds since epoch)
+            to_ts: End timestamp (inclusive, milliseconds since epoch)
+            limit: Maximum number of detections to return (default: 100, max: 10000)
             uploaded_only: Filter by upload status
+            sort_order: Sort order - 'asc' or 'desc' (default: 'desc' - newest first)
 
         Returns:
             List of detections
+
+        Raises:
+            ValueError: If parameters are invalid
         """
         try:
+            # Validate parameters
+            if limit > 10000:
+                raise ValueError("Limit cannot exceed 10000")
+            
+            if from_ts is not None and to_ts is not None and from_ts > to_ts:
+                raise ValueError("from_ts cannot be greater than to_ts")
+            
+            # Validate time range (max 7 days = 604800000 ms)
+            if from_ts is not None and to_ts is not None:
+                time_range = to_ts - from_ts
+                if time_range > 604800000:  # 7 days in milliseconds
+                    raise ValueError("Time range cannot exceed 7 days")
+            
+            # Validate sort order
+            if sort_order not in ["asc", "desc"]:
+                raise ValueError("sort_order must be 'asc' or 'desc'")
+
             # Build query
             conditions = []
             params = []
@@ -194,6 +216,7 @@ class EdgeStorage:
                 params.append(uploaded_only)
 
             where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+            order_clause = f"ORDER BY ts {sort_order.upper()}"
             params.append(limit)
 
             # Query index
@@ -203,7 +226,7 @@ class EdgeStorage:
                     SELECT id, ts, file_path, uploaded
                     FROM detections
                     {where_clause}
-                    ORDER BY ts DESC
+                    {order_clause}
                     LIMIT ?
                 """, params)
 
