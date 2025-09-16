@@ -348,6 +348,170 @@ class EdgeStorage:
             self.logger.error(f"Failed to cleanup old detections: {e}")
             return 0
 
+    async def get_detections_by_ids(self, detection_ids: List[str]) -> List[Detection]:
+        """
+        Retrieve detections by specific IDs (supports comma-separated queries from cloud)
+
+        Args:
+            detection_ids: List of detection IDs to retrieve
+
+        Returns:
+            List of detections matching the IDs
+        """
+        try:
+            if not detection_ids:
+                return []
+
+            # Query index for specified IDs
+            with sqlite3.connect(str(self.index_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                placeholders = ','.join(['?' for _ in detection_ids])
+                cursor = conn.execute(f"""
+                    SELECT id, ts, file_path, uploaded
+                    FROM detections
+                    WHERE id IN ({placeholders})
+                    ORDER BY ts DESC
+                """, detection_ids)
+
+                rows = cursor.fetchall()
+
+            # Load detections from files
+            detections = []
+            for row in rows:
+                try:
+                    file_path = self.base_path / row['file_path']
+                    if file_path.exists():
+                        with open(file_path, 'r') as f:
+                            data = json.load(f)
+                        detections.append(Detection(**data))
+                    else:
+                        self.logger.warning(f"Detection file not found: {file_path}")
+
+                except Exception as e:
+                    self.logger.error(f"Failed to load detection {row['id']}: {e}")
+                    continue
+
+            return detections
+
+        except Exception as e:
+            self.logger.error(f"Failed to get detections by IDs: {e}")
+            return []
+
+    async def get_detections_enhanced(self,
+                                    from_ts: Optional[int] = None,
+                                    to_ts: Optional[int] = None,
+                                    limit: int = 100,
+                                    uploaded: Optional[bool] = None,
+                                    detection_ids: Optional[List[str]] = None,
+                                    camera_ids: Optional[List[str]] = None,
+                                    site_ids: Optional[List[str]] = None,
+                                    zone_ids: Optional[List[str]] = None,
+                                    sort_order: str = "desc") -> List[Detection]:
+        """
+        Enhanced detection retrieval with multiple filtering options for cloud polling
+
+        Args:
+            from_ts: Start timestamp (inclusive, milliseconds since epoch)
+            to_ts: End timestamp (inclusive, milliseconds since epoch)
+            limit: Maximum number of detections to return
+            uploaded: Filter by upload status (True/False/None for all)
+            detection_ids: List of specific detection IDs to retrieve
+            camera_ids: List of camera IDs to filter by
+            site_ids: List of site IDs to filter by
+            zone_ids: List of zone IDs to filter by
+            sort_order: Sort order - 'asc' or 'desc'
+
+        Returns:
+            List of detections matching all criteria
+        """
+        try:
+            # If specific IDs requested, use direct ID query
+            if detection_ids:
+                return await self.get_detections_by_ids(detection_ids)
+
+            # Validate parameters
+            if limit > 10000:
+                raise ValueError("Limit cannot exceed 10000")
+
+            if from_ts is not None and to_ts is not None and from_ts > to_ts:
+                raise ValueError("from_ts cannot be greater than to_ts")
+
+            if sort_order not in ["asc", "desc"]:
+                raise ValueError("sort_order must be 'asc' or 'desc'")
+
+            # Build query conditions
+            conditions = []
+            params = []
+
+            # Timestamp filtering
+            if from_ts is not None:
+                conditions.append("ts >= ?")
+                params.append(from_ts)
+
+            if to_ts is not None:
+                conditions.append("ts <= ?")
+                params.append(to_ts)
+
+            # Upload status filtering
+            if uploaded is not None:
+                conditions.append("uploaded = ?")
+                params.append(uploaded)
+
+            # Build WHERE clause
+            where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+            order_clause = f"ORDER BY ts {sort_order.upper()}"
+            params.append(limit)
+
+            # Query index
+            with sqlite3.connect(str(self.index_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute(f"""
+                    SELECT id, ts, file_path, uploaded
+                    FROM detections
+                    {where_clause}
+                    {order_clause}
+                    LIMIT ?
+                """, params)
+
+                rows = cursor.fetchall()
+
+            # Load detections from files
+            detections = []
+            for row in rows:
+                try:
+                    file_path = self.base_path / row['file_path']
+                    if file_path.exists():
+                        with open(file_path, 'r') as f:
+                            data = json.load(f)
+
+                        detection = Detection(**data)
+
+                        # Apply filtering on detection data (not indexed in SQLite)
+                        if camera_ids and detection.cameraId not in camera_ids:
+                            continue
+                        if site_ids and detection.siteId not in site_ids:
+                            continue
+                        if zone_ids and detection.zoneId not in zone_ids:
+                            continue
+
+                        detections.append(detection)
+
+                    else:
+                        self.logger.warning(f"Detection file not found: {file_path}")
+
+                except Exception as e:
+                    self.logger.error(f"Failed to load detection {row['id']}: {e}")
+                    continue
+
+            return detections
+
+        except ValueError as e:
+            # Re-raise validation errors
+            raise
+        except Exception as e:
+            self.logger.error(f"Failed to get enhanced detections: {e}")
+            return []
+
     async def get_storage_stats(self) -> Dict[str, Any]:
         """Get storage statistics"""
         try:
