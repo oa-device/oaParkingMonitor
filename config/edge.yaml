@@ -1,13 +1,6 @@
 # oaParkingMonitor Simplified Edge Configuration
 # Clean 9-endpoint edge sensor configuration per TODO.md simplification plan
-
-# Deployment identifiers for September 17th demo
-# Note: These values match the CTO's provided API example data
-deployment:
-  customerId: "019949CE-8A59-7016-8498-7DE5E32D7B9D"  # Demo customer ID
-  siteId: "019949E8-2178-70D2-9E9E-D2954D2AECB7"      # Airport site ID
-  zoneId: "019949E8-4319-754E-AA3F-0F1E89C6D2DD"      # Parking zone ID
-  cameraId: "019949E8-602D-7C07-BDBC-CD897BA46F92"    # Camera ID for f1-ca-014
+# SECURITY: Deployment identifiers loaded from environment variables
 
 # Device metadata (for debugging and operations)
 device:
@@ -16,15 +9,6 @@ device:
   modelVersion: "1.2.3"                 # Model version for tracking
   snapshotInterval: 5                   # Detection interval in seconds (5s for demo)
   totalSpaces: 50                       # Total parking spaces in monitoring area
-
-# Central API configuration for demo (AWS deployment)
-centralApi:
-  enabled: true                         # ENABLED for demo data flow
-  endpoint: "${CENTRAL_API_URL:-https://api.demo.aws.com}"  # AWS endpoint (to be updated)
-  apiKey: "019949D0-BDE6-724C-9853-BC274CF48337"           # Demo API key from CTO
-  secretKey: "019949D1-0B11-7E7C-B078-751B6687FC9B"       # Demo secret key from CTO
-  batchSize: 100                        # Upload batch size
-  submissionInterval: 60                # Upload interval in seconds
 
 # Version information (auto-populated)
 version:
