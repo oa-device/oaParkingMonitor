@@ -105,11 +105,13 @@ class DetectionSnapshot(BaseModel):
 
 
 class DetectionBatch(BaseModel):
-    """Batch detection response"""
+    """Batch detection response with pagination support"""
     detections: List[Detection] = Field(..., description="List of detections")
     total: int = Field(..., description="Total detections returned")
     fromTs: Optional[int] = Field(None, description="Start timestamp filter")
     toTs: Optional[int] = Field(None, description="End timestamp filter")
+    hasMore: bool = Field(default=False, description="Indicates if more results are available")
+    nextFromTs: Optional[int] = Field(None, description="Cursor for next batch (timestamp of oldest detection)")
 
 
 class ConfigResponse(BaseModel):

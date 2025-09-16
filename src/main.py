@@ -315,32 +315,86 @@ async def restart_camera():
 @app.get("/detections", tags=["Core"])
 async def get_detections_batch(
     from_ts: int = Query(None, description="Start timestamp (epoch milliseconds)"),
-    to_ts: int = Query(None, description="End timestamp (epoch milliseconds)"),
-    limit: int = Query(1000, description="Maximum number of detections", le=10000)
+    to_ts: int = Query(None, description="End timestamp (epoch milliseconds)"), 
+    limit: int = Query(100, description="Maximum number of detections (default: 100, max: 10000)", le=10000, ge=1),
+    sort: str = Query("desc", description="Sort order: 'asc' (oldest first) or 'desc' (newest first)")
 ):
-    """Batch retrieval for resilience and central upload
-
-    Supports timestamp range queries for efficient sync with central API.
-    Returns historical detection data for upload and analysis.
+    """Professional batch retrieval with sensible defaults
+    
+    Default behavior (no parameters): Returns last 100 detections from past 24 hours, newest first.
+    
+    Features:
+    - Timestamp range filtering (milliseconds since epoch)
+    - Configurable sorting (newest/oldest first)
+    - Pagination support with cursors
+    - Maximum 7-day time range limit
+    - Professional error handling
+    
+    Examples:
+    - GET /detections -> Last 100 detections, past 24h
+    - GET /detections?limit=50 -> Last 50 detections
+    - GET /detections?from_ts=1640995200000&to_ts=1641081600000 -> Specific range
     """
     try:
+        # Apply professional defaults
+        current_time_ms = int(time.time() * 1000)
+        
+        # Default to last 24 hours if no time range specified
+        if from_ts is None and to_ts is None:
+            from_ts = current_time_ms - (24 * 60 * 60 * 1000)  # 24 hours ago
+            to_ts = current_time_ms
+        
+        # Validate sort parameter
+        if sort not in ["asc", "desc"]:
+            return JSONResponse(
+                content=ErrorResponse(
+                    error="Invalid Sort Parameter",
+                    message="Sort parameter must be 'asc' or 'desc'"
+                ).model_dump(),
+                status_code=400
+            )
+
         # Get detections from local storage
         detections = await edge_storage.get_detections(
             from_ts=from_ts,
             to_ts=to_ts,
-            limit=limit
+            limit=limit,
+            sort_order=sort
         )
 
-        # Convert to response format
+        # Calculate pagination info
+        has_more = len(detections) == limit
+        next_from_ts = None
+        if has_more and detections:
+            # For 'desc' sort, next cursor is oldest timestamp
+            # For 'asc' sort, next cursor is newest timestamp  
+            if sort == "desc":
+                next_from_ts = detections[-1].ts - 1  # Exclusive boundary
+            else:
+                next_from_ts = detections[-1].ts + 1  # Exclusive boundary
+
+        # Convert to response format with pagination
         detection_batch = DetectionBatch(
             detections=detections,
             total=len(detections),
             fromTs=from_ts,
-            toTs=to_ts
+            toTs=to_ts,
+            hasMore=has_more,
+            nextFromTs=next_from_ts
         )
 
         return detection_batch.model_dump()
 
+    except ValueError as e:
+        # Handle validation errors from EdgeStorage
+        logging.warning(f"Invalid detections query: {e}")
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Invalid Query Parameters",
+                message=str(e)
+            ).model_dump(),
+            status_code=400
+        )
     except Exception as e:
         logging.error(f"Detections batch error: {e}")
         return JSONResponse(
