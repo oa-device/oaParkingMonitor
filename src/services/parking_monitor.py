@@ -14,6 +14,7 @@ from ..config import ParkingConfig, ConfigManager
 from ..detector import MVPParkingDetector
 from ..storage.edge_storage import EdgeStorage
 from ..models.edge import Detection
+from .aws_upload_service import AwsUploadService
 
 
 class ParkingMonitorService:
@@ -40,11 +41,17 @@ class ParkingMonitorService:
         
         # Initialize edge storage for detections API
         self.edge_storage = EdgeStorage()
-        
+
         # Setup logging from configuration
         self._setup_logging()
         self.logger = logging.getLogger(__name__)
-        
+
+        # Initialize AWS upload service with edge configuration
+        self.upload_service = AwsUploadService(
+            edge_storage=self.edge_storage,
+            config=getattr(self.config, 'centralApi', None)
+        )
+
         self.logger.info(f"Service initialized with {self.config.get_total_zones()} parking zones")
         self.logger.info(f"Snapshot interval: {self.config.processing.snapshot_interval}s")
         self.logger.info("Detector initialized with shared configuration")
@@ -70,10 +77,13 @@ class ParkingMonitorService:
             
             # Start detector snapshot loop in background
             detection_task = asyncio.create_task(self.detector.start_snapshot_loop())
-            
+
             # Start data persistence loop
             storage_task = asyncio.create_task(self._storage_loop())
-            
+
+            # Start AWS upload service for batch uploading
+            await self.upload_service.start_upload_loop()
+
             self.logger.info("Parking detection service started successfully")
             
         except Exception as e:
@@ -86,11 +96,14 @@ class ParkingMonitorService:
         try:
             self.logger.info("Stopping parking detection service...")
             self.running = False
-            
+
             await self.detector.stop()
-            
+
+            # Stop AWS upload service
+            await self.upload_service.stop_upload_loop()
+
             # EdgeStorage cleanup happens automatically
-            
+
             self.logger.info("Parking detection service stopped successfully")
             
         except Exception as e:
