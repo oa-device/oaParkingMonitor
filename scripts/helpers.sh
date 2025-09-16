@@ -56,34 +56,34 @@ _log_message() {
 
 # Success messages
 log_success() {
-    _log_message "SUCCESS" "$GREEN" "✅" "$1"
+    _log_message "SUCCESS" "$GREEN" "[OK]" "$1"
 }
 
 # Information messages
 log_info() {
-    _log_message "INFO" "$BLUE" "ℹ️ " "$1"
+    _log_message "INFO" "$BLUE" "[INFO]" "$1"
 }
 
 # Warning messages
 log_warn() {
-    _log_message "WARN" "$YELLOW" "⚠️ " "$1"
+    _log_message "WARN" "$YELLOW" "[WARN]" "$1"
 }
 
 # Error messages
 log_error() {
-    _log_message "ERROR" "$RED" "❌" "$1"
+    _log_message "ERROR" "$RED" "[FAIL]" "$1"
 }
 
 # Debug messages (only shown if DEBUG=1)
 log_debug() {
     if [[ "${DEBUG:-0}" == "1" ]]; then
-        _log_message "DEBUG" "$PURPLE" "🐛" "$1"
+        _log_message "DEBUG" "$PURPLE" "[DEBUG]" "$1"
     fi
 }
 
 # Progress messages
 log_progress() {
-    _log_message "PROGRESS" "$CYAN" "🔄" "$1"
+    _log_message "PROGRESS" "$CYAN" "[PROGRESS]" "$1"
 }
 
 # Section headers

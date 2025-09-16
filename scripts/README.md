@@ -32,7 +32,7 @@ Simplified scripts for MVP deployment and management.
 
 The `helpers.sh` library provides consistent functionality across all scripts:
 
-### 🎨 **Logging Functions**
+### **Logging Functions**
 ```bash
 log_success "Operation completed"
 log_info "Information message"
@@ -43,7 +43,7 @@ log_progress "Progress update"
 log_header "Section Header"
 ```
 
-### 🖥️ **System Detection**
+### **System Detection**
 ```bash
 is_macos                    # Check if running on macOS
 is_apple_silicon           # Check for Apple Silicon
@@ -52,7 +52,7 @@ command_exists cmd         # Check if command available
 check_python_version       # Validate Python 3.12+
 ```
 
-### 📁 **Project Management**
+### **Project Management**
 ```bash
 cd_project_root           # Change to project root
 get_environment           # Get current environment
@@ -69,14 +69,14 @@ activate_venv            # Activate venv
 check_dependencies       # Validate critical deps
 ```
 
-### 🔧 **Service Management**
+### **Service Management**
 ```bash
 is_service_running       # Check if service active
 get_service_pid          # Get service process ID
 stop_service            # Gracefully stop service
 ```
 
-### 🌐 **API Communication**
+### **API Communication**
 ```bash
 api_call "/endpoint" "desc" [host] [port] [timeout]
 parse_json "$response" ".path" "default"
@@ -94,13 +94,13 @@ cleanup_temp_files       # Clean temporary files
 
 ## Script Features
 
-### 🔧 **Consistent Interface**
+### **Consistent Interface**
 - Unified command-line argument parsing
 - Standardized help messages (`--help`)
 - Common environment variable support
 - Professional error handling and logging
 
-### 🎯 **Environment Awareness**
+### **Environment Awareness**
 ```bash
 export PARKING_MONITOR_ENV=production  # or staging, development
 export DEBUG=1                        # Enable debug logging
@@ -113,7 +113,7 @@ export LOG_FILE=/path/to/logfile      # Optional file logging
 - Resource monitoring and validation
 - Intelligent caching and cleanup
 
-### 🛡️ **Production Readiness**
+### **Production Readiness**
 - Comprehensive validation checks
 - Health monitoring with thresholds
 - Error tracking and recovery
@@ -165,12 +165,12 @@ All scripts follow consistent error handling patterns:
 - **Exit Code 2**: Error (operation should stop)
 
 ### Log Levels
-- **SUCCESS** ✅: Operations completed successfully
-- **INFO** ℹ️: Informational messages
-- **WARN** ⚠️: Warnings that don't prevent operation
-- **ERROR** ❌: Errors that require attention
-- **PROGRESS** 🔄: Progress updates during operations
-- **DEBUG** 🐛: Detailed debug information (DEBUG=1 only)
+- **SUCCESS** [OK]: Operations completed successfully
+- **INFO** [INFO]: Informational messages
+- **WARN** [WARN]: Warnings that don't prevent operation
+- **ERROR** [FAIL]: Errors that require attention
+- **PROGRESS** [PROGRESS]: Progress updates during operations
+- **DEBUG** [DEBUG]: Detailed debug information (DEBUG=1 only)
 
 ## Integration
 

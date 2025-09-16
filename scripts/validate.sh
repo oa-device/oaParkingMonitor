@@ -197,7 +197,7 @@ show_validation_summary() {
             
             return 0
         else
-            log_warn "⚠️  Validation completed with $VALIDATION_WARNINGS warning(s)"
+            log_warn "[WARN] Validation completed with $VALIDATION_WARNINGS warning(s)"
             log_warn "Review warnings above - deployment possible but not optimal"
             
             echo
@@ -206,7 +206,7 @@ show_validation_summary() {
             return 1
         fi
     else
-        log_error "🚨 Validation failed with $VALIDATION_ERRORS error(s) and $VALIDATION_WARNINGS warning(s)"
+        log_error "[FAIL] Validation failed with $VALIDATION_ERRORS error(s) and $VALIDATION_WARNINGS warning(s)"
         log_error "Fix errors above before deployment"
         
         echo
