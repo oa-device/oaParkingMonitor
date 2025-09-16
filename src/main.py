@@ -10,8 +10,15 @@ import os
 import platform
 import time
 
+# Load environment variables from .env file for local development
+from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# Ensure .env is loaded from the project root directory
+project_root = Path(__file__).parent.parent
+env_file = project_root / '.env'
+load_dotenv(env_file, override=True)  # Override LaunchAgent env vars with .env values
 
 from typing import Union, List
 
@@ -145,9 +152,21 @@ async def health_check():
 
     Returns only essential health status and timestamp for monitoring systems.
     Edge device provides minimal data as per simplification philosophy.
+    Health includes parking service and upload service status.
     """
+    # Check both parking service and upload service health
+    parking_healthy = parking_service.running
+    upload_healthy = True
+
+    # Check upload service health if enabled
+    if parking_service.upload_service.config.enabled:
+        upload_stats = parking_service.upload_service.get_upload_stats()
+        upload_healthy = upload_stats.get("is_healthy", True)
+
+    overall_healthy = parking_healthy and upload_healthy
+
     return HealthResponse(
-        status="ok" if parking_service.running else "error"
+        status="ok" if overall_healthy else "error"
     )
 
 
@@ -313,17 +332,40 @@ async def restart_camera():
         )
 
 
-# EDGE SIMPLIFICATION: Camera presets managed centrally via Ansible
+@app.get("/upload/status", tags=["Debug"])
+async def get_upload_status():
+    """Get AWS upload service status and statistics
 
+    Returns comprehensive upload monitoring information including:
+    - Upload success/failure rates
+    - Time since last upload attempt and success
+    - Batch configuration and health status
+    - Total detections uploaded
+    """
+    try:
+        # Get upload stats from the upload service
+        upload_stats = parking_service.upload_service.get_upload_stats()
 
+        return JSONResponse(
+            content=upload_stats,
+            status_code=200
+        )
 
+    except Exception as e:
+        logging.error(f"Upload status error: {e}")
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Upload Status Error",
+                message="Failed to retrieve upload service status"
+            ).model_dump(),
+            status_code=500
+        )
 
 
 @app.get("/detections", tags=["Core"])
 async def get_detections_batch(
     start: int = Query(None, description="Start timestamp (epoch milliseconds)"),
     end: int = Query(None, description="End timestamp (epoch milliseconds)"),
-
     limit: int = Query(100, description="Maximum number of detections (default: 100, max: 10000)", le=10000, ge=1),
     sort: str = Query("desc", description="Sort order: 'asc' (oldest first) or 'desc' (newest first)"),
     uploaded: bool = Query(None, description="Filter by upload status (true/false, null for all)"),
@@ -612,9 +654,9 @@ def validate_startup_environment():
     logging.info("[OK] oaParkingMonitor v2.0 - Modular Architecture")
     logging.info(f"[OK] Python: {sys.version}")
     logging.info(f"[OK] Platform: {platform.system()} {platform.machine()}")
-    logging.info(f"📁 Working directory: {os.getcwd()}")
-    logging.info(f"🌐 Service available at: http://0.0.0.0:9091")
-    logging.info(f"📚 API docs at: http://0.0.0.0:9091/docs")
+    logging.info(f"[OK] Working directory: {os.getcwd()}")
+    logging.info(f"[OK] Service available at: http://0.0.0.0:9091")
+    logging.info(f"[OK] API docs at: http://0.0.0.0:9091/docs")
     logging.info("[OK] Modular architecture: Service Layer + Camera Controller + API Models")
     
     return True
