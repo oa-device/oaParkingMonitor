@@ -1,6 +1,6 @@
 """
 Data Format Converters
-Handles conversion between legacy VehicleDetection format and new analysis formats
+Handles conversion between VehicleDetection format and analysis formats
 """
 
 from typing import List, Dict, Any
@@ -14,7 +14,7 @@ class DetectionConverter:
     
     @staticmethod
     def to_analysis_format(detections) -> List[Dict[str, Any]]:
-        """Convert legacy VehicleDetection objects to new format for zone analyzer"""
+        """Convert VehicleDetection objects to analysis format for zone analyzer"""
         detection_data = []
         
         for i, detection in enumerate(detections):
@@ -76,13 +76,13 @@ class ZoneConverter:
 
 
 class ResultConverter:
-    """Converts analysis results back to legacy format"""
+    """Converts analysis results back to zone status format"""
     
     def __init__(self, logger: logging.Logger = None):
         self.logger = logger or logging.getLogger(__name__)
     
-    def to_legacy_format(self, zone_results, zones_data, detections, config) -> List[Dict[str, Any]]:
-        """Convert results back to legacy format and update config"""
+    def to_zone_status_format(self, zone_results, zones_data, detections, config) -> List[Dict[str, Any]]:
+        """Convert results back to zone status format and update config"""
         zones_status = []
         
         for result in zone_results:
@@ -93,7 +93,7 @@ class ResultConverter:
                 result.confidence
             )
             
-            # Update detection zone_id for legacy compatibility
+            # Update detection zone_id for result tracking
             self._update_detection_zone_ids(detections, result)
             
             zones_status.append({
@@ -116,7 +116,7 @@ class ResultConverter:
         return zones_status
     
     def _update_detection_zone_ids(self, detections, result):
-        """Update detection zone_id for legacy compatibility"""
+        """Update detection zone_id for result tracking"""
         for detection in detections:
             det_center_x = detection.x + detection.width // 2
             det_center_y = detection.y + detection.height // 2

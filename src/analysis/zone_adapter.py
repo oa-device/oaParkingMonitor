@@ -33,10 +33,10 @@ class ZoneAnalysisAdapter:
             config: ParkingConfig object with zone configuration
             
         Returns:
-            List of zone status dictionaries in legacy format
+            List of zone status dictionaries
         """
         try:
-            # Convert legacy VehicleDetection objects to new format for zone analyzer
+            # Convert VehicleDetection objects to analysis format for zone analyzer
             detection_data = self.detection_converter.to_analysis_format(detections)
             
             # Convert parking zones to analyzer format
@@ -49,8 +49,8 @@ class ZoneAnalysisAdapter:
                 enhanced_detection=True
             )
             
-            # Convert results back to legacy format and update config
-            zones_status = self.result_converter.to_legacy_format(
+            # Convert results back to zone status format and update config
+            zones_status = self.result_converter.to_zone_status_format(
                 zone_results, zones_data, detections, config
             )
             
