@@ -9,8 +9,11 @@ import logging
 import os
 import platform
 import time
+
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+from typing import Union, List
 
 import uvicorn
 from fastapi import FastAPI, Request, Query, HTTPException
@@ -26,7 +29,8 @@ from .services.camera_controller import CameraController
 # Import edge components
 from .models.edge import (
     DetectionBatch, DetectionSnapshot, HealthResponse,
-    ErrorResponse, OperationResponse, CameraStatus
+    ErrorResponse, OperationResponse, CameraStatus, ConfirmUploadRequest,
+    ConfirmUploadResponse
 )
 from .storage.edge_storage import EdgeStorage
 
@@ -312,38 +316,46 @@ async def restart_camera():
 # EDGE SIMPLIFICATION: Camera presets managed centrally via Ansible
 
 
+
+
+
 @app.get("/detections", tags=["Core"])
 async def get_detections_batch(
-    from_ts: int = Query(None, description="Start timestamp (epoch milliseconds)"),
-    to_ts: int = Query(None, description="End timestamp (epoch milliseconds)"), 
+    start: int = Query(None, description="Start timestamp (epoch milliseconds)"),
+    end: int = Query(None, description="End timestamp (epoch milliseconds)"),
+
     limit: int = Query(100, description="Maximum number of detections (default: 100, max: 10000)", le=10000, ge=1),
-    sort: str = Query("desc", description="Sort order: 'asc' (oldest first) or 'desc' (newest first)")
+    sort: str = Query("desc", description="Sort order: 'asc' (oldest first) or 'desc' (newest first)"),
+    uploaded: bool = Query(None, description="Filter by upload status (true/false, null for all)"),
+    id: str = Query(None, description="Comma-separated detection IDs"),
+    cameraId: str = Query(None, description="Comma-separated camera IDs"),
+    siteId: str = Query(None, description="Comma-separated site IDs"),
+    zoneId: str = Query(None, description="Comma-separated zone IDs")
 ):
-    """Professional batch retrieval with sensible defaults
-    
-    Default behavior (no parameters): Returns last 100 detections from past 24 hours, newest first.
-    
-    Features:
-    - Timestamp range filtering (milliseconds since epoch)
+    """Professional batch retrieval with cloud-pull architecture support
+
+    Enhanced Features:
+    - Timestamp range filtering: start/end parameters (milliseconds since epoch)
+    - Upload status filtering: uploaded parameter for cloud polling
+    - Comma-separated filtering: id, cameraId, siteId, zoneId support
     - Configurable sorting (newest/oldest first)
     - Pagination support with cursors
-    - Maximum 7-day time range limit
-    - Professional error handling
-    
-    Examples:
-    - GET /detections -> Last 100 detections, past 24h
-    - GET /detections?limit=50 -> Last 50 detections
-    - GET /detections?from_ts=1640995200000&to_ts=1641081600000 -> Specific range
+
+    Cloud Pull Examples:
+    - GET /detections?uploaded=false -> Get unuploaded detections for cloud
+    - GET /detections?id=abc,def,ghi -> Get specific detections by ID
+    - GET /detections?cameraId=cam1,cam2 -> Filter by multiple cameras
+
     """
     try:
         # Apply professional defaults
         current_time_ms = int(time.time() * 1000)
-        
+
         # Default to last 24 hours if no time range specified
-        if from_ts is None and to_ts is None:
-            from_ts = current_time_ms - (24 * 60 * 60 * 1000)  # 24 hours ago
-            to_ts = current_time_ms
-        
+        if start is None and end is None:
+            start = current_time_ms - (24 * 60 * 60 * 1000)  # 24 hours ago
+            end = current_time_ms
+
         # Validate sort parameter
         if sort not in ["asc", "desc"]:
             return JSONResponse(
@@ -354,20 +366,43 @@ async def get_detections_batch(
                 status_code=400
             )
 
-        # Get detections from local storage
-        detections = await edge_storage.get_detections(
-            from_ts=from_ts,
-            to_ts=to_ts,
+        # Parse comma-separated values
+        detection_ids = id.split(',') if id else None
+        camera_ids = cameraId.split(',') if cameraId else None
+        site_ids = siteId.split(',') if siteId else None
+        zone_ids = zoneId.split(',') if zoneId else None
+
+        # Clean up empty strings from splitting
+        if detection_ids:
+            detection_ids = [did.strip() for did in detection_ids if did.strip()]
+        if camera_ids:
+            camera_ids = [cid.strip() for cid in camera_ids if cid.strip()]
+        if site_ids:
+            site_ids = [sid.strip() for sid in site_ids if sid.strip()]
+        if zone_ids:
+            zone_ids = [zid.strip() for zid in zone_ids if zid.strip()]
+
+        # Get detections from local storage using enhanced method
+        detections = await edge_storage.get_detections_enhanced(
+            from_ts=start,
+            to_ts=end,
             limit=limit,
+            uploaded=uploaded,
+            detection_ids=detection_ids,
+            camera_ids=camera_ids,
+            site_ids=site_ids,
+            zone_ids=zone_ids,
             sort_order=sort
         )
 
-        # Calculate pagination info
+
+
+        # Calculate pagination info for non-binned response
         has_more = len(detections) == limit
         next_from_ts = None
         if has_more and detections:
             # For 'desc' sort, next cursor is oldest timestamp
-            # For 'asc' sort, next cursor is newest timestamp  
+            # For 'asc' sort, next cursor is newest timestamp
             if sort == "desc":
                 next_from_ts = detections[-1].ts - 1  # Exclusive boundary
             else:
@@ -377,8 +412,8 @@ async def get_detections_batch(
         detection_batch = DetectionBatch(
             detections=detections,
             total=len(detections),
-            fromTs=from_ts,
-            toTs=to_ts,
+            fromTs=start,
+            toTs=end,
             hasMore=has_more,
             nextFromTs=next_from_ts
         )
@@ -401,6 +436,61 @@ async def get_detections_batch(
             content=ErrorResponse(
                 error="Detections Batch Error",
                 message="Failed to retrieve detections batch"
+            ).model_dump(),
+            status_code=500
+        )
+
+
+@app.post("/detections/confirm", response_model=ConfirmUploadResponse, tags=["Core"])
+async def confirm_detections_uploaded(request: ConfirmUploadRequest):
+    """Confirm that detections have been successfully uploaded to cloud
+
+    This endpoint allows the cloud API to confirm receipt of detections,
+    marking them as uploaded in local storage. This is part of the cloud-pull
+    architecture where the cloud polls for new data and confirms receipt.
+
+    Args:
+        request: List of detection IDs that were successfully uploaded
+
+    Returns:
+        Confirmation response with count of successful confirmations
+    """
+    try:
+        if not request.ids:
+            return JSONResponse(
+                content=ErrorResponse(
+                    error="Invalid Request",
+                    message="No detection IDs provided for confirmation"
+                ).model_dump(),
+                status_code=400
+            )
+
+        # Mark detections as uploaded in storage
+        success = await edge_storage.mark_as_uploaded(request.ids)
+
+        if success:
+            logging.info(f"Confirmed {len(request.ids)} detections as uploaded")
+            return ConfirmUploadResponse(
+                success=True,
+                confirmedCount=len(request.ids),
+                failedIds=[]
+            )
+        else:
+            logging.error("Failed to confirm detections as uploaded")
+            return JSONResponse(
+                content=ErrorResponse(
+                    error="Confirmation Failed",
+                    message="Failed to update upload status in local storage"
+                ).model_dump(),
+                status_code=500
+            )
+
+    except Exception as e:
+        logging.error(f"Error confirming detections: {e}")
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Confirmation Error",
+                message="Failed to process upload confirmation"
             ).model_dump(),
             status_code=500
         )
@@ -444,10 +534,9 @@ async def update_configuration():
     Requires valid API key for authentication.
     """
     try:
-        # TODO: Implement proper API key validation and config update
         return OperationResponse(
             status="not_implemented",
-            message="Configuration update not yet implemented - edge simplification in progress"
+            message="Configuration update not available - edge device uses static configuration"
         )
 
     except Exception as e:
@@ -520,13 +609,13 @@ def validate_startup_environment():
             return False
     
     # Enhanced environment info
-    logging.info("🚀 oaParkingMonitor v2.0 - Modular Architecture")
-    logging.info(f"✅ Python: {sys.version}")
-    logging.info(f"🖥️  Platform: {platform.system()} {platform.machine()}")
+    logging.info("[OK] oaParkingMonitor v2.0 - Modular Architecture")
+    logging.info(f"[OK] Python: {sys.version}")
+    logging.info(f"[OK] Platform: {platform.system()} {platform.machine()}")
     logging.info(f"📁 Working directory: {os.getcwd()}")
     logging.info(f"🌐 Service available at: http://0.0.0.0:9091")
     logging.info(f"📚 API docs at: http://0.0.0.0:9091/docs")
-    logging.info("🏗️ Modular architecture: Service Layer + Camera Controller + API Models")
+    logging.info("[OK] Modular architecture: Service Layer + Camera Controller + API Models")
     
     return True
 
@@ -540,7 +629,7 @@ if __name__ == "__main__":
     
     # Validate environment
     if not validate_startup_environment():
-        logging.error("❌ Startup validation failed - exiting")
+        logging.error("[FAIL] Startup validation failed - exiting")
         exit(1)
     
     # Get configuration from service
@@ -548,7 +637,7 @@ if __name__ == "__main__":
     api_host = parking_service.config.api.host
     
     try:
-        logging.info(f"🚀 Starting modular service on {api_host}:{api_port}")
+        logging.info(f"[OK] Starting modular service on {api_host}:{api_port}")
         uvicorn.run(
             "src.main:app",
             host=api_host,
@@ -557,5 +646,5 @@ if __name__ == "__main__":
             log_level="info"
         )
     except Exception as e:
-        logging.error(f"❌ Failed to start server: {e}")
+        logging.error(f"[FAIL] Failed to start server: {e}")
         exit(1)

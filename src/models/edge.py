@@ -104,6 +104,9 @@ class DetectionSnapshot(BaseModel):
     occupiedSpaces: int = Field(..., description="Currently occupied spaces")
 
 
+
+
+
 class DetectionBatch(BaseModel):
     """Batch detection response with pagination support"""
     detections: List[Detection] = Field(..., description="List of detections")
@@ -158,3 +161,16 @@ class UploadStatus(BaseModel):
     failedCount: int = Field(default=0, description="Number of failed uploads")
     error: Optional[str] = Field(None, description="Error message if failed")
     timestamp: int = Field(default_factory=get_epoch_ms, description="Operation timestamp")
+
+
+class ConfirmUploadRequest(BaseModel):
+    """Request to confirm detections have been uploaded to cloud"""
+    ids: List[str] = Field(..., description="List of detection IDs to mark as uploaded")
+
+
+class ConfirmUploadResponse(BaseModel):
+    """Response confirming upload status update"""
+    success: bool = Field(..., description="Confirmation success")
+    confirmedCount: int = Field(..., description="Number of detections confirmed")
+    failedIds: List[str] = Field(default_factory=list, description="IDs that failed to confirm")
+    timestamp: int = Field(default_factory=get_epoch_ms, description="Confirmation timestamp")
