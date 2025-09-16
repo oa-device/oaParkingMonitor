@@ -384,9 +384,16 @@ class MVPParkingDetector:
                           (detection.x, detection.y - 5),
                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
             
-            # Add timestamp and stats
+            # Add timestamp and stats - positioned on top-right
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cv2.putText(overlay_frame, timestamp, (10, 30),
+            
+            # Get frame dimensions for right-aligned positioning
+            frame_height, frame_width = overlay_frame.shape[:2]
+            
+            # Calculate text size for right alignment
+            timestamp_size = cv2.getTextSize(timestamp, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
+            timestamp_x = frame_width - timestamp_size[0] - 10  # 10px margin from right edge
+            cv2.putText(overlay_frame, timestamp, (timestamp_x, 30),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             
             # Add occupancy info with zone breakdown
@@ -396,7 +403,11 @@ class MVPParkingDetector:
             hard_zones = len([z for z in zones_status if z["detection_difficulty"] == "hard"])
             
             occupancy_text = f"Occupied: {occupied_count}/{total_zones} (Easy: {easy_zones}, Hard: {hard_zones})"
-            cv2.putText(overlay_frame, occupancy_text, (10, 60),
+            
+            # Calculate text size for right alignment
+            occupancy_size = cv2.getTextSize(occupancy_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
+            occupancy_x = frame_width - occupancy_size[0] - 10  # 10px margin from right edge
+            cv2.putText(overlay_frame, occupancy_text, (occupancy_x, 60),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
             
         except Exception as e:
