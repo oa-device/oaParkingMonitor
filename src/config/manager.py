@@ -9,7 +9,7 @@ import logging
 
 from .models import ParkingConfig
 from .validation import ConfigLoader, ConfigSaver
-from .preset_loader import PresetLoader
+from ..services.preset_loader import PresetLoader
 
 
 class ConfigManager:
@@ -53,10 +53,38 @@ class ConfigManager:
             # Apply preset if specified in configuration
             if self._config.camera.active_preset:
                 preset_name = self._config.camera.active_preset
-                if PresetLoader.apply_preset_to_config(self._config, preset_name):
+                try:
+                    preset_loader = PresetLoader()
+                    preset_info = preset_loader.get_preset(preset_name)
+                    # Apply preset settings to camera configuration
+                    preset_settings = preset_info.settings
+
+                    if 'exposure' in preset_settings and 'value' in preset_settings['exposure']:
+                        self._config.camera.exposure = preset_settings['exposure']['value']
+
+                    if 'image_quality' in preset_settings:
+                        quality = preset_settings['image_quality']
+                        if 'brightness' in quality:
+                            self._config.camera.brightness = quality['brightness']
+                        if 'contrast' in quality:
+                            self._config.camera.contrast = quality['contrast']
+                        if 'saturation' in quality:
+                            self._config.camera.saturation = quality['saturation']
+                        if 'gain' in quality:
+                            self._config.camera.gain = quality['gain']
+
+                    if 'enhancement' in preset_settings:
+                        enhancement = preset_settings['enhancement']
+                        if 'gamma_correction' in enhancement:
+                            self._config.enhancement.gamma_correction = enhancement['gamma_correction']
+                        if 'clahe_enabled' in enhancement:
+                            self._config.enhancement.clahe_enabled = enhancement['clahe_enabled']
+                        if 'clahe_clip_limit' in enhancement:
+                            self._config.enhancement.clahe_clip_limit = enhancement['clahe_clip_limit']
+
                     logging.info(f"Applied camera preset: {preset_name}")
-                else:
-                    logging.warning(f"Failed to apply camera preset: {preset_name}")
+                except Exception as e:
+                    logging.warning(f"Failed to apply camera preset '{preset_name}': {e}")
             
             return self._config
             
