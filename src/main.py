@@ -37,9 +37,19 @@ from .services.camera_controller import CameraController
 from .models.edge import (
     DetectionBatch, DetectionSnapshot, HealthResponse,
     ErrorResponse, OperationResponse, CameraStatus, ConfirmUploadRequest,
-    ConfirmUploadResponse
+    ConfirmUploadResponse, ZoneChange, DeltaResponse
 )
 from .storage.edge_storage import EdgeStorage
+
+# Import middleware
+from .middleware.compression import OptimizedGzipMiddleware
+
+# Import caching utilities
+from .utils.cache import (
+    CacheMiddleware, CachePolicy, create_config_response, 
+    create_detection_response, create_health_response, create_image_response
+)
+from .utils.cache_metrics import get_cache_performance_report, reset_cache_metrics
 
 
 # Global service instances
@@ -67,9 +77,10 @@ app = FastAPI(
 Streamlined parking space monitoring service with YOLOv11m AI model.
 Edge device provides minimal data collection and reliable sensor functionality.
 
-## Core Endpoints (5)
+## Core Endpoints (6)
 - **Health**: `GET /health` - Service status
 - **Current State**: `GET /detection` - Real-time parking data
+- **Delta Updates**: `GET /detection/changes` - Incremental zone changes
 - **Historical Data**: `GET /detections` - Batch retrieval
 - **Configuration**: `GET /config` - System settings
 - **Config Update**: `POST /config` - Remote configuration
@@ -91,7 +102,7 @@ Edge device provides minimal data collection and reliable sensor functionality.
     tags_metadata=[
         {
             "name": "Core",
-            "description": "Essential edge device functionality - 5 core endpoints"
+            "description": "Essential edge device functionality - 6 core endpoints including delta updates"
         },
         {
             "name": "Debug",
@@ -144,15 +155,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add gzip compression middleware for JSON endpoints
+# Targets /detections, /health, /detection, /config for 60-70% payload reduction
+app.add_middleware(OptimizedGzipMiddleware)
+
 
 # Core API Endpoints
 @app.get("/health", response_model=HealthResponse, tags=["Core"])
-async def health_check():
-    """Service health check - minimal 2-field response per edge simplification
+async def health_check(request: Request):
+    """Service health check - minimal 2-field response per edge simplification with caching
 
     Returns only essential health status and timestamp for monitoring systems.
     Edge device provides minimal data as per simplification philosophy.
     Health includes parking service and upload service status.
+    
+    Caching: 30-second cache with ETag support to reduce redundant health polls.
     """
     # Check both parking service and upload service health
     parking_healthy = parking_service.running
@@ -165,25 +182,37 @@ async def health_check():
 
     overall_healthy = parking_healthy and upload_healthy
 
-    return HealthResponse(
+    health_data = HealthResponse(
         status="ok" if overall_healthy else "error"
-    )
+    ).model_dump()
+
+    # Return cached response with health policy (30-second cache)
+    return create_health_response(health_data, request)
 
 
 @app.get("/detection", tags=["Core"])
-async def get_detection():
-    """Current parking state snapshot (minimal data for real-time monitoring)
+async def get_detection(request: Request):
+    """Current parking state snapshot (minimal data for real-time monitoring) with caching
 
     Returns only essential data: timestamp, total spaces, and occupied spaces.
     Edge device provides minimal current state as per simplification plan.
+    
+    Caching: No-cache with ETag support based on last detection timestamp.
+    Returns 304 Not Modified if data unchanged since last request.
     """
     try:
         stats = await parking_service.get_detection_stats()
-
-        return DetectionSnapshot(
+        
+        detection_data = DetectionSnapshot(
             totalSpaces=stats.get("total_zones", parking_service.config.get_total_zones()),
             occupiedSpaces=stats.get("occupied_zones", 0)
         ).model_dump()
+
+        # Get last detection timestamp for cache validation
+        last_detection_ts = stats.get("last_detection_epoch", time.time())
+
+        # Return cached response with detection policy (no-cache + ETag)
+        return create_detection_response(detection_data, request, last_detection_ts)
 
     except Exception as e:
         logging.error(f"Detection stats error: {e}")
@@ -196,15 +225,95 @@ async def get_detection():
         )
 
 
+@app.get("/detection/changes", response_model=DeltaResponse, tags=["Core"])
+async def get_detection_changes(
+    since: int = Query(..., description="Timestamp in milliseconds since epoch to get changes from"),
+    limit: int = Query(100, description="Maximum number of changes to return (default: 100, max: 1000)", le=1000, ge=1)
+):
+    """Get incremental parking zone changes since specified timestamp
+
+    This endpoint provides delta updates for clients that poll frequently,
+    returning only zones that have changed since the specified timestamp.
+    This significantly reduces data transfer compared to full state requests.
+    
+    Key Benefits:
+    - Minimal payload: Only changed zones are returned
+    - Reduced bandwidth: Up to 95% less data for incremental updates
+    - Efficient polling: Clients can poll frequently without waste
+    - Change history: Includes previous and current state for each change
+    
+    Retention: Changes are kept in memory for 10 minutes.
+    """
+    try:
+        # Validate timestamp
+        if since < 0:
+            return JSONResponse(
+                content=ErrorResponse(
+                    error="Invalid Timestamp",
+                    message="Timestamp must be a positive number (milliseconds since epoch)"
+                ).model_dump(),
+                status_code=400
+            )
+        
+        current_time = int(time.time() * 1000)
+        
+        # Check if timestamp is too old (beyond retention window)
+        retention_ms = 10 * 60 * 1000  # 10 minutes
+        if since < (current_time - retention_ms):
+            return JSONResponse(
+                content=ErrorResponse(
+                    error="Timestamp Too Old",
+                    message=f"Timestamp is beyond retention window of 10 minutes. Use /detection for full state."
+                ).model_dump(),
+                status_code=400
+            )
+        
+        # Get changes from detector
+        changes_data = parking_service.detector.get_zone_changes_since(since)
+        
+        # Apply limit
+        if len(changes_data) > limit:
+            changes_data = changes_data[:limit]
+        
+        # Convert to response models
+        zone_changes = [ZoneChange(**change_data) for change_data in changes_data]
+        
+        # Check if there might be more changes beyond what we returned
+        tracker_stats = parking_service.detector.get_change_tracker_stats()
+        has_more_changes = len(changes_data) == limit and tracker_stats.get("total_changes", 0) > limit
+        
+        return DeltaResponse(
+            changes=zone_changes,
+            sinceTimestamp=since,
+            totalChanges=len(zone_changes),
+            hasMoreChanges=has_more_changes
+        )
+        
+    except Exception as e:
+        logging.error(f"Delta changes error: {e}")
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Delta Changes Error",
+                message="Failed to retrieve zone changes"
+            ).model_dump(),
+            status_code=500
+        )
+
+
 @app.get("/snapshot", tags=["Debug"])
-async def get_snapshot():
+async def get_snapshot(request: Request, quality: int = Query(95, ge=10, le=100, description="JPEG quality (10-100, default 95)")):
     """Get processed snapshot with detection overlays
 
     Returns the latest processed frame with vehicle detection bounding boxes
     and zone overlays for visual verification of detection accuracy.
+    
+    Caching: No-cache with proper timestamp headers for real-time images.
+    
+    Args:
+        quality: JPEG quality level for bandwidth optimization (10-100, default 95)
     """
     try:
-        image_bytes = parking_service.get_snapshot_image()
+        image_bytes = parking_service.get_snapshot_image(quality)
         if image_bytes is None:
             return JSONResponse(
                 content=ErrorResponse(
@@ -214,16 +323,12 @@ async def get_snapshot():
                 status_code=404
             )
 
-        return Response(
-            content=image_bytes,
-            media_type="image/jpeg",
-            headers={
-                "Content-Disposition": "inline; filename=parking_snapshot.jpg",
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0"
-            }
-        )
+        # Create image response with proper cache headers
+        response = create_image_response(image_bytes, request, "image/jpeg", "snapshot")
+        response.headers["Content-Disposition"] = "inline; filename=parking_snapshot.jpg"
+        response.headers["X-Image-Quality"] = str(quality)
+        
+        return response
     except Exception as e:
         logging.error(f"Snapshot error: {e}")
         return JSONResponse(
@@ -236,14 +341,19 @@ async def get_snapshot():
 
 
 @app.get("/frame", tags=["Debug"])
-async def get_raw_frame():
+async def get_raw_frame(request: Request, quality: int = Query(95, ge=10, le=100, description="JPEG quality (10-100, default 95)")):
     """Get raw camera frame without processing
 
     Returns the unprocessed camera frame for troubleshooting camera
     settings, focus, and exposure without AI detection overlays.
+    
+    Caching: No-cache with proper timestamp headers for real-time images.
+    
+    Args:
+        quality: JPEG quality level for bandwidth optimization (10-100, default 95)
     """
     try:
-        image_bytes = parking_service.get_raw_frame_image()
+        image_bytes = parking_service.get_raw_frame_image(quality)
         if image_bytes is None:
             return JSONResponse(
                 content=ErrorResponse(
@@ -253,16 +363,12 @@ async def get_raw_frame():
                 status_code=404
             )
 
-        return Response(
-            content=image_bytes,
-            media_type="image/jpeg",
-            headers={
-                "Content-Disposition": "inline; filename=parking_raw_frame.jpg",
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0"
-            }
-        )
+        # Create image response with proper cache headers
+        response = create_image_response(image_bytes, request, "image/jpeg", "frame")
+        response.headers["Content-Disposition"] = "inline; filename=parking_raw_frame.jpg"
+        response.headers["X-Image-Quality"] = str(quality)
+        
+        return response
     except Exception as e:
         logging.error(f"Raw frame error: {e}")
         return JSONResponse(
@@ -364,6 +470,7 @@ async def get_upload_status():
 
 @app.get("/detections", tags=["Core"])
 async def get_detections_batch(
+    request: Request,
     start: int = Query(None, description="Start timestamp (epoch milliseconds)"),
     end: int = Query(None, description="End timestamp (epoch milliseconds)"),
     limit: int = Query(100, description="Maximum number of detections (default: 100, max: 10000)", le=10000, ge=1),
@@ -460,7 +567,13 @@ async def get_detections_batch(
             nextFromTs=next_from_ts
         )
 
-        return detection_batch.model_dump()
+        # Get newest detection timestamp for cache validation
+        newest_ts = max((d.ts for d in detections), default=time.time() * 1000) / 1000
+        
+        batch_data = detection_batch.model_dump()
+        
+        # Return cached response with detection policy (no-cache + ETag)
+        return create_detection_response(batch_data, request, newest_ts)
 
     except ValueError as e:
         # Handle validation errors from EdgeStorage
@@ -539,13 +652,17 @@ async def confirm_detections_uploaded(request: ConfirmUploadRequest):
 
 
 @app.get("/config", response_model=ConfigResponse, tags=["Core"])
-async def get_full_configuration():
-    """Get complete system configuration"""
+async def get_full_configuration(request: Request):
+    """Get complete system configuration with caching
+    
+    Caching: 5-minute cache with ETag support for static configuration data.
+    Returns 304 Not Modified if configuration unchanged since last request.
+    """
     try:
         config_data = parking_service.get_config_data()
 
         current_epoch = time.time()
-        return ConfigResponse(
+        config_response = ConfigResponse(
             configuration=config_data,
             metadata={
                 "config_loaded_from": getattr(parking_service.config, 'config_loaded_from', None),
@@ -555,7 +672,10 @@ async def get_full_configuration():
             },
             data_epoch=current_epoch,
             request_epoch=current_epoch
-        )
+        ).model_dump()
+
+        # Return cached response with config policy (5-minute cache)
+        return create_config_response(config_response, request)
 
     except Exception as e:
         logging.error(f"Configuration error: {e}")
@@ -587,6 +707,71 @@ async def update_configuration():
             content=ErrorResponse(
                 error="Configuration Update Error",
                 message="Failed to update configuration"
+            ).model_dump(),
+            status_code=500
+        )
+
+
+# Cache Performance Monitoring Endpoint
+@app.get("/cache/metrics", tags=["Debug"])
+async def get_cache_metrics():
+    """Get cache performance metrics and statistics
+    
+    Returns comprehensive caching performance data including:
+    - Cache hit rates by endpoint
+    - Bandwidth savings from 304 responses
+    - Response time improvements
+    - Overall caching effectiveness
+    """
+    try:
+        metrics = get_cache_performance_report()
+        return JSONResponse(
+            content=metrics,
+            status_code=200,
+            headers={
+                "Cache-Control": "no-cache, must-revalidate",
+                "Content-Type": "application/json"
+            }
+        )
+    except Exception as e:
+        logging.error(f"Cache metrics error: {e}")
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Cache Metrics Error",
+                message="Failed to retrieve cache performance metrics"
+            ).model_dump(),
+            status_code=500
+        )
+
+
+@app.post("/cache/reset", response_model=OperationResponse, tags=["Debug"])
+async def reset_cache_metrics_endpoint():
+    """Reset cache performance metrics
+    
+    Clears all cache performance statistics and starts fresh tracking.
+    Useful for measuring cache effectiveness over specific time periods.
+    """
+    try:
+        success = reset_cache_metrics()
+        if success:
+            return OperationResponse(
+                status="success",
+                message="Cache metrics reset successfully"
+            )
+        else:
+            return JSONResponse(
+                content=ErrorResponse(
+                    error="Reset Failed",
+                    message="Failed to reset cache metrics"
+                ).model_dump(),
+                status_code=500
+            )
+    except Exception as e:
+        logging.error(f"Cache metrics reset error: {e}")
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Cache Reset Error",
+                message="Failed to reset cache metrics"
             ).model_dump(),
             status_code=500
         )

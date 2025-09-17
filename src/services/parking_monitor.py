@@ -132,13 +132,21 @@ class ParkingMonitorService:
         """Get service uptime in seconds"""
         return (datetime.now() - self.start_time).total_seconds()
     
-    def get_snapshot_image(self) -> Optional[bytes]:
-        """Get last processed snapshot as JPEG bytes"""
-        return self.detector.get_last_snapshot_image()
+    def get_snapshot_image(self, quality: int = 95) -> Optional[bytes]:
+        """Get last processed snapshot as JPEG bytes with configurable quality
+        
+        Args:
+            quality: JPEG quality (10-100, default 95)
+        """
+        return self.detector.get_last_snapshot_image(quality)
     
-    def get_raw_frame_image(self) -> Optional[bytes]:
-        """Get current raw frame (without overlays) as JPEG bytes"""
-        return self.detector.get_raw_frame_image()
+    def get_raw_frame_image(self, quality: int = 95) -> Optional[bytes]:
+        """Get current raw frame (without overlays) as JPEG bytes with configurable quality
+        
+        Args:
+            quality: JPEG quality (10-100, default 95)
+        """
+        return self.detector.get_raw_frame_image(quality)
     
     async def get_zones_data(self) -> list:
         """Get parking zones data with current status"""

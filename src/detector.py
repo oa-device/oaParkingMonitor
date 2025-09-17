@@ -21,6 +21,7 @@ from .detection import VehicleDetector, ZoneAnalyzer, ImagePreprocessor
 from .camera import CameraManager
 from .analysis import ZoneAnalysisAdapter
 from .core import TemporalSmoother, DetectionTracker, VehicleTracker
+from .tracking import ZoneChangeTracker
 
 
 @dataclass
@@ -87,6 +88,9 @@ class MVPParkingDetector:
         self.detection_tracker = DetectionTracker(window_size=60)
         self.vehicle_tracker = VehicleTracker(max_missed_frames=3)
         
+        # Initialize zone change tracker for delta updates
+        self.zone_change_tracker = ZoneChangeTracker(retention_minutes=10)
+        
         # Legacy detection state (for compatibility)
         self.model = None
         self.last_snapshot: Optional[SnapshotResult] = None
@@ -120,6 +124,17 @@ class MVPParkingDetector:
         self.logger.info(f"Snapshot interval: {self.config.processing.snapshot_interval} seconds")
         if config is not None:
             self.logger.info("Using shared configuration from service")
+        
+        # Initialize zone change tracker with initial states if zones exist
+        if self.config.parking_zones:
+            initial_zones = [{
+                "id": zone.id,
+                "space_id": zone.space_id,
+                "name": zone.name,
+                "occupied": zone.occupied,
+                "confidence": 0.0
+            } for zone in self.config.parking_zones]
+            self.zone_change_tracker.initialize_states(initial_zones)
     
     def _is_apple_silicon(self) -> bool:
         """Check if running on Apple Silicon"""
@@ -437,6 +452,11 @@ class MVPParkingDetector:
             
             # Analyze parking zones
             zones_status = self._analyze_parking_zones(detections)
+            
+            # Track zone changes for delta updates
+            zone_changes = self.zone_change_tracker.update_zone_states(zones_status)
+            if zone_changes:
+                self.logger.debug(f"Detected {len(zone_changes)} zone changes")
 
             # Update config with zone occupancy status
             for zone_result in zones_status:
@@ -571,21 +591,33 @@ class MVPParkingDetector:
         
         self.logger.info("Detector stopped and resources cleaned up")
     
-    def get_last_snapshot_image(self) -> Optional[bytes]:
-        """Get last processed snapshot as JPEG bytes"""
+    def get_last_snapshot_image(self, quality: int = 95) -> Optional[bytes]:
+        """Get last processed snapshot as JPEG bytes with configurable quality
+        
+        Args:
+            quality: JPEG quality (10-100, default 95)
+        """
         if self.last_snapshot is None:
             return None
         
         try:
-            # Encode as JPEG
-            _, buffer = cv2.imencode('.jpg', self.last_snapshot.image)
+            # Validate quality parameter
+            quality = max(10, min(100, quality))
+            
+            # Encode as JPEG with specified quality
+            _, buffer = cv2.imencode('.jpg', self.last_snapshot.image, 
+                                   [cv2.IMWRITE_JPEG_QUALITY, quality])
             return buffer.tobytes()
         except Exception as e:
             self.logger.error(f"Image encoding failed: {e}")
             return None
     
-    def get_raw_frame_image(self) -> Optional[bytes]:
-        """Get current raw frame (without overlays) as JPEG bytes"""
+    def get_raw_frame_image(self, quality: int = 95) -> Optional[bytes]:
+        """Get current raw frame (without overlays) as JPEG bytes with configurable quality
+        
+        Args:
+            quality: JPEG quality (10-100, default 95)
+        """
         # Try to capture a fresh frame first
         fresh_frame = self.camera_manager.capture_frame()
         frame_to_use = fresh_frame if fresh_frame is not None else self.camera_manager.get_current_frame()
@@ -594,8 +626,12 @@ class MVPParkingDetector:
             return None
         
         try:
-            # Encode as JPEG
-            _, buffer = cv2.imencode('.jpg', frame_to_use)
+            # Validate quality parameter
+            quality = max(10, min(100, quality))
+            
+            # Encode as JPEG with specified quality
+            _, buffer = cv2.imencode('.jpg', frame_to_use, 
+                                   [cv2.IMWRITE_JPEG_QUALITY, quality])
             return buffer.tobytes()
         except Exception as e:
             self.logger.error(f"Raw frame encoding failed: {e}")
@@ -681,3 +717,12 @@ class MVPParkingDetector:
         except:
             pass
         return 0.0
+    
+    def get_zone_changes_since(self, since_timestamp: int) -> List[Dict[str, Any]]:
+        """Get zone changes since specified timestamp for delta updates"""
+        changes = self.zone_change_tracker.get_changes_since(since_timestamp)
+        return [change.to_dict() for change in changes]
+    
+    def get_change_tracker_stats(self) -> Dict[str, Any]:
+        """Get change tracker statistics"""
+        return self.zone_change_tracker.get_stats()
