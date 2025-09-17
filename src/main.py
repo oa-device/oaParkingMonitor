@@ -80,26 +80,16 @@ app = FastAPI(
 Streamlined parking space monitoring service with YOLOv11m AI model.
 Edge device provides minimal data collection and reliable sensor functionality.
 
-## Core Endpoints (6)
-- **Health**: `GET /health` - Service status
-- **Current State**: `GET /detection` - Real-time parking data
-- **Delta Updates**: `GET /detection/changes` - Incremental zone changes
-- **Historical Data**: `GET /detections` - Batch retrieval
-- **Configuration**: `GET /config` - System settings
-- **Config Update**: `POST /config` - Remote configuration
+## Key Endpoints
+- **`GET /health`** - Service status
+- **`GET /detection`** - Current parking state
+- **`GET /detections`** - Historical data batch
+- **`GET /snapshot`** - Visual detection image
+- **`GET /camera/presets`** - Available camera presets
+- **`POST /camera/preset/{name}`** - Apply lighting preset
 
-## Debug Endpoints (7)
-- **Visual Debug**: `GET /snapshot` - Processed image
-- **Camera Debug**: `GET /frame` - Raw camera feed
-- **Camera Status**: `GET /camera/status` - Hardware status
-- **Camera Recovery**: `POST /camera/restart` - Force restart
-- **Camera Presets**: `GET /camera/presets` - List available presets
-- **Apply Preset**: `POST /camera/preset/{name}` - Apply camera preset
-- **Current Preset**: `GET /camera/preset/current` - Get active preset
-
-## Dashboard (2)
-- **Landing Page**: `GET /` - Debug interface
-- **Dashboard**: `GET /dashboard` - Service overview
+## Dashboard
+- **`GET /`** - Web interface
     """,
     version="2.0.0",
     lifespan=lifespan,
@@ -108,15 +98,39 @@ Edge device provides minimal data collection and reliable sensor functionality.
     tags_metadata=[
         {
             "name": "Core",
-            "description": "Essential edge device functionality - 6 core endpoints including delta updates"
+            "description": "Essential edge device functionality - Primary API endpoints for production use"
+        },
+        {
+            "name": "Core - Health & Status",
+            "description": "Service health monitoring and operational status"
+        },
+        {
+            "name": "Core - Detection Data",
+            "description": "Parking detection results and historical data retrieval"
+        },
+        {
+            "name": "Core - Configuration",
+            "description": "System configuration management and remote updates"
         },
         {
             "name": "Debug",
-            "description": "Operational debugging and troubleshooting - 4 debug endpoints"
+            "description": "Operational debugging and troubleshooting - Development and diagnostic tools"
+        },
+        {
+            "name": "Debug - Visual",
+            "description": "Image snapshots and visual debugging tools"
+        },
+        {
+            "name": "Debug - Camera Control",
+            "description": "Camera hardware management and preset configuration"
+        },
+        {
+            "name": "Debug - System",
+            "description": "Upload monitoring, cache management, and system diagnostics"
         },
         {
             "name": "Dashboard",
-            "description": "Web interface for device debugging - 2 dashboard endpoints"
+            "description": "Web interface for device debugging and service overview"
         }
     ]
 )
@@ -167,7 +181,7 @@ app.add_middleware(OptimizedGzipMiddleware)
 
 
 # Core API Endpoints
-@app.get("/health", response_model=HealthResponse, tags=["Core"])
+@app.get("/health", response_model=HealthResponse, tags=["Core - Health & Status"])
 async def health_check(request: Request):
     """Service health check - minimal 2-field response per edge simplification with caching
 
@@ -196,7 +210,7 @@ async def health_check(request: Request):
     return create_health_response(health_data, request)
 
 
-@app.get("/detection", tags=["Core"])
+@app.get("/detection", tags=["Core - Detection Data"])
 async def get_detection(request: Request):
     """Current parking state snapshot (minimal data for real-time monitoring) with caching
 
@@ -231,7 +245,7 @@ async def get_detection(request: Request):
         )
 
 
-@app.get("/detection/changes", response_model=DeltaResponse, tags=["Core"])
+@app.get("/detection/changes", response_model=DeltaResponse, tags=["Core - Detection Data"])
 async def get_detection_changes(
     since: int = Query(..., description="Timestamp in milliseconds since epoch to get changes from"),
     limit: int = Query(100, description="Maximum number of changes to return (default: 100, max: 1000)", le=1000, ge=1)
@@ -306,7 +320,7 @@ async def get_detection_changes(
         )
 
 
-@app.get("/snapshot", tags=["Debug"])
+@app.get("/snapshot", tags=["Debug - Visual"])
 async def get_snapshot(request: Request, quality: int = Query(95, ge=10, le=100, description="JPEG quality (10-100, default 95)")):
     """Get processed snapshot with detection overlays
 
@@ -346,7 +360,7 @@ async def get_snapshot(request: Request, quality: int = Query(95, ge=10, le=100,
         )
 
 
-@app.get("/frame", tags=["Debug"])
+@app.get("/frame", tags=["Debug - Visual"])
 async def get_raw_frame(request: Request, quality: int = Query(95, ge=10, le=100, description="JPEG quality (10-100, default 95)")):
     """Get raw camera frame without processing
 
@@ -386,7 +400,7 @@ async def get_raw_frame(request: Request, quality: int = Query(95, ge=10, le=100
         )
 
 # Camera Control API Endpoints (now using dedicated controller)
-@app.get("/camera/status", response_model=CameraStatus, tags=["Debug"])
+@app.get("/camera/status", response_model=CameraStatus, tags=["Debug - Camera Control"])
 async def get_camera_status():
     """Get camera status for debugging - read-only
 
@@ -417,7 +431,7 @@ async def get_camera_status():
 
 
 
-@app.post("/camera/restart", response_model=OperationResponse, tags=["Debug"])
+@app.post("/camera/restart", response_model=OperationResponse, tags=["Debug - Camera Control"])
 async def restart_camera():
     """Restart camera connection for operational recovery
 
@@ -445,7 +459,7 @@ async def restart_camera():
 
 
 # Camera Preset API Endpoints
-@app.get("/camera/presets", response_model=CameraPresetsResponse, tags=["Debug"])
+@app.get("/camera/presets", response_model=CameraPresetsResponse, tags=["Debug - Camera Control"])
 async def get_camera_presets():
     """Get available camera presets for different lighting conditions
 
@@ -473,7 +487,7 @@ async def get_camera_presets():
         )
 
 
-@app.post("/camera/preset/{preset_name}", response_model=CameraOperationResponse, tags=["Debug"])
+@app.post("/camera/preset/{preset_name}", response_model=CameraOperationResponse, tags=["Debug - Camera Control"])
 async def apply_camera_preset(preset_name: str):
     """Apply a camera preset for specific lighting conditions
 
@@ -504,7 +518,7 @@ async def apply_camera_preset(preset_name: str):
         )
 
 
-@app.get("/camera/preset/current", tags=["Debug"])
+@app.get("/camera/preset/current", tags=["Debug - Camera Control"])
 async def get_current_preset():
     """Get currently active camera preset
 
@@ -546,7 +560,7 @@ async def get_current_preset():
         )
 
 
-@app.get("/upload/status", tags=["Debug"])
+@app.get("/upload/status", tags=["Debug - System"])
 async def get_upload_status():
     """Get AWS upload service status and statistics
 
@@ -576,7 +590,7 @@ async def get_upload_status():
         )
 
 
-@app.get("/detections", tags=["Core"])
+@app.get("/detections", tags=["Core - Detection Data"])
 async def get_detections_batch(
     request: Request,
     start: int = Query(None, description="Start timestamp (epoch milliseconds)"),
@@ -704,7 +718,7 @@ async def get_detections_batch(
         )
 
 
-@app.post("/detections/confirm", response_model=ConfirmUploadResponse, tags=["Core"])
+@app.post("/detections/confirm", response_model=ConfirmUploadResponse, tags=["Core - Detection Data"])
 async def confirm_detections_uploaded(request: ConfirmUploadRequest):
     """Confirm that detections have been successfully uploaded to cloud
 
@@ -759,7 +773,7 @@ async def confirm_detections_uploaded(request: ConfirmUploadRequest):
         )
 
 
-@app.get("/config", response_model=ConfigResponse, tags=["Core"])
+@app.get("/config", response_model=ConfigResponse, tags=["Core - Configuration"])
 async def get_full_configuration(request: Request):
     """Get complete system configuration with caching
     
@@ -796,7 +810,7 @@ async def get_full_configuration(request: Request):
         )
 
 
-@app.post("/config", response_model=OperationResponse, tags=["Core"])
+@app.post("/config", response_model=OperationResponse, tags=["Core - Configuration"])
 async def update_configuration():
     """Update deployment identifiers - API key protected
 
@@ -821,7 +835,7 @@ async def update_configuration():
 
 
 # Cache Performance Monitoring Endpoint
-@app.get("/cache/metrics", tags=["Debug"])
+@app.get("/cache/metrics", tags=["Debug - System"])
 async def get_cache_metrics():
     """Get cache performance metrics and statistics
     
@@ -852,7 +866,7 @@ async def get_cache_metrics():
         )
 
 
-@app.post("/cache/reset", response_model=OperationResponse, tags=["Debug"])
+@app.post("/cache/reset", response_model=OperationResponse, tags=["Debug - System"])
 async def reset_cache_metrics_endpoint():
     """Reset cache performance metrics
     
