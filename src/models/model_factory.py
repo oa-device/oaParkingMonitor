@@ -31,7 +31,7 @@ class ModelFactory:
         # Create exposure settings model
         exposure_fields = {
             'mode': (str, Field(default="manual", description="Exposure mode: 'auto' or 'manual'")),
-            'value': (float, Field(default=0.25, ge=0.0, le=1.0, description="Manual exposure value (0-1)"))
+            'value': (float, Field(default=0.25, ge=-1.0, le=1.0, description="Exposure value (-1.0 for auto, 0.0-1.0 for manual)"))
         }
         CameraExposureSettings = create_model('CameraExposureSettings', **exposure_fields)
         
