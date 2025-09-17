@@ -174,3 +174,25 @@ class ConfirmUploadResponse(BaseModel):
     confirmedCount: int = Field(..., description="Number of detections confirmed")
     failedIds: List[str] = Field(default_factory=list, description="IDs that failed to confirm")
     timestamp: int = Field(default_factory=get_epoch_ms, description="Confirmation timestamp")
+
+
+# Delta Update Models
+class ZoneChange(BaseModel):
+    """Represents a single zone state change for delta updates"""
+    zoneId: str = Field(..., description="Zone identifier")
+    spaceId: str = Field(..., description="Space identifier")
+    name: str = Field(..., description="Zone name")
+    previousState: bool = Field(..., description="Previous occupied state")
+    currentState: bool = Field(..., description="Current occupied state")
+    previousConfidence: float = Field(..., description="Previous confidence score")
+    currentConfidence: float = Field(..., description="Current confidence score")
+    timestamp: int = Field(..., description="Change timestamp in milliseconds")
+
+
+class DeltaResponse(BaseModel):
+    """Delta update response with only changed zones"""
+    changes: List[ZoneChange] = Field(..., description="List of zone changes")
+    sinceTimestamp: int = Field(..., description="Requested since timestamp")
+    responseTimestamp: int = Field(default_factory=get_epoch_ms, description="Response timestamp")
+    totalChanges: int = Field(..., description="Number of changes in response")
+    hasMoreChanges: bool = Field(default=False, description="Whether more changes exist beyond retention window")
