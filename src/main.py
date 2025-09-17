@@ -33,6 +33,9 @@ from .api.models import ConfigResponse
 from .services.parking_monitor import ParkingMonitorService
 from .services.camera_controller import CameraController
 
+# Import camera preset models
+from .models import CameraPresetsResponse, CameraOperationResponse
+
 # Import edge components
 from .models.edge import (
     DetectionBatch, DetectionSnapshot, HealthResponse,
@@ -85,11 +88,14 @@ Edge device provides minimal data collection and reliable sensor functionality.
 - **Configuration**: `GET /config` - System settings
 - **Config Update**: `POST /config` - Remote configuration
 
-## Debug Endpoints (4)
+## Debug Endpoints (7)
 - **Visual Debug**: `GET /snapshot` - Processed image
 - **Camera Debug**: `GET /frame` - Raw camera feed
 - **Camera Status**: `GET /camera/status` - Hardware status
 - **Camera Recovery**: `POST /camera/restart` - Force restart
+- **Camera Presets**: `GET /camera/presets` - List available presets
+- **Apply Preset**: `POST /camera/preset/{name}` - Apply camera preset
+- **Current Preset**: `GET /camera/preset/current` - Get active preset
 
 ## Dashboard (2)
 - **Landing Page**: `GET /` - Debug interface
@@ -433,6 +439,108 @@ async def restart_camera():
             content=ErrorResponse(
                 error="Camera Restart Error",
                 message="Failed to restart camera connection"
+            ).model_dump(),
+            status_code=500
+        )
+
+
+# Camera Preset API Endpoints
+@app.get("/camera/presets", response_model=CameraPresetsResponse, tags=["Debug"])
+async def get_camera_presets():
+    """Get available camera presets for different lighting conditions
+
+    Returns all available camera presets with their descriptions and settings.
+    Useful for selecting appropriate settings for current environmental conditions.
+    """
+    try:
+        presets = camera_controller.get_available_presets()
+        current_preset = parking_service.config.camera.active_preset or "none"
+
+        return CameraPresetsResponse(
+            presets=presets,
+            current_preset=current_preset,
+            server_time_epoch=time.time()
+        )
+
+    except Exception as e:
+        logging.error(f"Camera presets error: {e}")
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Camera Presets Error",
+                message="Failed to retrieve camera presets"
+            ).model_dump(),
+            status_code=500
+        )
+
+
+@app.post("/camera/preset/{preset_name}", response_model=CameraOperationResponse, tags=["Debug"])
+async def apply_camera_preset(preset_name: str):
+    """Apply a camera preset for specific lighting conditions
+
+    Applies the specified camera preset to optimize image quality for current conditions.
+    Available presets: auto, manual_outdoor, outdoor_bright, outdoor_normal, outdoor_overcast, outdoor_harsh
+
+    Args:
+        preset_name: Name of the preset to apply (e.g., "outdoor_harsh" for very bright conditions)
+    """
+    try:
+        result = await camera_controller.apply_preset(preset_name)
+
+        if result.success:
+            # Update the active preset in configuration
+            parking_service.config.camera.active_preset = preset_name
+            logging.info(f"Applied camera preset: {preset_name}")
+
+        return result
+
+    except Exception as e:
+        logging.error(f"Apply preset error: {e}")
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Apply Preset Error",
+                message=f"Failed to apply camera preset: {preset_name}"
+            ).model_dump(),
+            status_code=500
+        )
+
+
+@app.get("/camera/preset/current", tags=["Debug"])
+async def get_current_preset():
+    """Get currently active camera preset
+
+    Returns the name of the currently active camera preset and its settings.
+    """
+    try:
+        current_preset = parking_service.config.camera.active_preset or "none"
+
+        if current_preset != "none":
+            presets = camera_controller.get_available_presets()
+            preset_info = presets.get(current_preset)
+
+            return JSONResponse(
+                content={
+                    "current_preset": current_preset,
+                    "preset_info": preset_info.model_dump() if preset_info else None,
+                    "camera_settings": camera_controller.get_current_settings()
+                },
+                status_code=200
+            )
+        else:
+            return JSONResponse(
+                content={
+                    "current_preset": "none",
+                    "preset_info": None,
+                    "camera_settings": camera_controller.get_current_settings()
+                },
+                status_code=200
+            )
+
+    except Exception as e:
+        logging.error(f"Current preset error: {e}")
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Current Preset Error",
+                message="Failed to retrieve current camera preset"
             ).model_dump(),
             status_code=500
         )
