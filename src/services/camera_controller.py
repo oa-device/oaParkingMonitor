@@ -102,7 +102,7 @@ class CameraController:
                 )
             
             # Apply settings to camera device if needed
-            if self.detector.is_camera_device:
+            if hasattr(self.detector, 'camera_manager') and hasattr(self.detector.camera_manager, 'cap'):
                 await self._reinitialize_camera()
             
             self.logger.info("Camera settings updated successfully using generic applicator")
@@ -128,7 +128,7 @@ class CameraController:
             self.config.enhancement = ImageEnhancement()
             
             # Apply settings if camera device
-            if self.detector.is_camera_device:
+            if hasattr(self.detector, 'camera_manager') and hasattr(self.detector.camera_manager, 'cap'):
                 await self._reinitialize_camera()
             
             self.logger.info("Camera settings reset to defaults")
@@ -189,17 +189,17 @@ class CameraController:
     
     async def _reinitialize_camera(self):
         """Reinitialize camera with updated settings"""
-        if self.detector.is_camera_device:
+        if hasattr(self.detector, 'camera_manager') and hasattr(self.detector.camera_manager, 'cap'):
             # Stop detector temporarily
             was_running = self.detector.running
             if was_running:
                 self.detector.running = False
                 await asyncio.sleep(0.5)  # Allow current processing to complete
-            
+
             # Reinitialize camera with new settings
-            self.detector.camera_initialized = False
-            await self.detector._initialize_camera()
-            
+            if hasattr(self.detector.camera_manager, 'initialize'):
+                await self.detector.camera_manager.initialize()
+
             # Restart detector if it was running
             if was_running:
                 self.detector.running = True
