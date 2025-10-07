@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>API Route Documentation: POST /detections</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #333;
+        }
+
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            overflow-x: auto;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>API Route: POST /detections</h1>
+
+    <h2>Description</h2>
+    <p>
+        This route receives device detections via HTTP POST requests. It validates and enriches each detection (ensuring
+        UUID, customerId, and timestamp), checks for uniqueness, and saves the detections to DynamoDB. It enforces
+        customerId consistency between the request header and detection body. If a detection's timestamp is older than
+        the last aggregation timestamp, it updates the aggregation state to ensure the new detections are included in
+        the next aggregation run.
+    </p>
+
+    <h2>Endpoint</h2>
+    <p><code>POST /detections</code></p>
+
+    <h2>Authorizer</h2>
+    <p>
+        The route expects authentication via the <code>x-customer-id</code> header. Additional authorizer logic may be
+        implemented upstream.
+    </p>
+
+    <h2>Request Parameters</h2>
+
+    <h3>Headers</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Header</th>
+                <th>Required</th>
+                <th>Description</th>
+                <th>Example</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>x-customer-id</code></td>
+                <td>Yes</td>
+                <td>Customer ID for authentication and validation.</td>
+                <td><code>your_customer_id</code></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Body</h3>
+    <p>
+        The request body must be a JSON object or array of objects, each representing a detection.
+    </p>
+    <pre>
+{
+    "id": "detection1",           // Optional, UUIDv7. Auto-generated if not provided.
+    "customerId": "customer1",    // Optional, enforced to match header if present.
+    "siteId": "siteA",            // Optional, should belong to customerId.
+    "zoneId": "zoneB",            // Optional, should belong to customerId.
+    "cameraId": "cameraC",        // Optional, should belong to customerId.
+    "ts": 1694851200000,          // Optional, timestamp in ms. Defaults to now if not provided.
+    "totalSpaces": 50,            // Optional, number of total spaces.
+    "occupiedSpaces": 20          // Optional, number of occupied spaces.
+}
+    </pre>
+    <p>
+        If a single object is provided, it will be processed as an array with one element.
+    </p>
+
+    <h2>Response</h2>
+
+    <h3>Success (200 OK)</h3>
+    <pre>
+{
+    "status": "ok",
+    "detections": [
+        {
+            "id": "detection1",
+            "customerId": "customer1",
+            "siteId": "siteA",
+            "zoneId": "zoneB",
+            "cameraId": "cameraC",
+            "ts": 1694851200000,
+            "totalSpaces": 50,
+            "occupiedSpaces": 20
+        },
+        // ... more detections ...
+    ]
+}
+    </pre>
+
+    <h3>Error (400/403/404/500)</h3>
+    <pre>
+{
+    "status": "error",
+    "msg": "Bad Request: missing body"
+}
+    </pre>
+    <pre>
+{
+    "status": "error",
+    "msg": "Forbidden: customerId mismatch header(customer1)/body(customer2)"
+}
+    </pre>
+    <pre>
+{
+    "status": "error",
+    "msg": "Not found: customerId not found"
+}
+    </pre>
+
+    <h2>Lambda Function: device_post_detections/index.js</h2>
+    <p>
+        This Lambda function handles the <code>POST /detections</code> route. It performs the following tasks:
+    </p>
+    <ul>
+        <li>Validates the presence and format of the request body.</li>
+        <li>Validates the <code>x-customer-id</code> header and checks that the customer exists.</li>
+        <li>Enforces customerId consistency between the header and detection body.</li>
+        <li>Ensures each detection has a unique UUID (auto-generates if missing).</li>
+        <li>Ensures each detection has a timestamp (auto-generates if missing).</li>
+        <li>Skips detections with duplicate IDs.</li>
+        <li>Saves all valid detections to DynamoDB.</li>
+        <li>If any detection is older than the last aggregation timestamp, updates the aggregation state to include it
+            in the next aggregation run.</li>
+        <li>Returns the saved detections in the response.</li>
+    </ul>
+
+    <h2>Important Notes</h2>
+    <ul>
+        <li>All detections are filtered and validated by the provided <code>x-customer-id</code> header.</li>
+        <li>Division by zero is avoided in mean calculations; if no detections are present, mean values are set to 0.
+        </li>
+        <li>Errors are returned with appropriate status codes and messages.</li>
+    </ul>
+</body>
+
+</html>

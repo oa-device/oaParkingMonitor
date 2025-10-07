@@ -1,0 +1,7 @@
+../../../scripts/tableClear.js -t parking001_test_detections
+../../../scripts/tableClear.js -t parking001_test_detections_bin_hour
+../../../scripts/tableClear.js -t parking001_test_detections_bin_day
+../../../scripts/tableClear.js -t parking001_test_detections_bin_week
+../../../scripts/tableClear.js -t parking001_test_detections_bin_month
+../../../scripts/tableClear.js -t parking001_test_detections_bin_year
+../../../scripts/tableClear.js -t parking001_test_system_states

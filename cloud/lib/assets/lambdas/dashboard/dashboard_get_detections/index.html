@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>API Route Documentation: GET /detections</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #333;
+        }
+
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            overflow-x: auto;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>API Route: GET /detections</h1>
+
+    <h2>Description</h2>
+    <p>
+        This route retrieves device detections from DynamoDB, supporting filtering by customer, site, zone, camera, and
+        time range.
+        It can also bin detections by time intervals for aggregation. If the requested bin size is a named size
+        (<code>hour</code>, <code>day</code>, <code>week</code>, <code>month</code>), the bins are taken from the
+        corresponding pre-compiled table.
+    </p>
+
+    <h2>Endpoint</h2>
+    <p><code>GET /detections</code></p>
+
+    <h2>Authorizer</h2>
+    <p>
+        The route expects authentication via the <code>x-customer-id</code> header. Additional authorizer logic may be
+        implemented upstream.
+    </p>
+
+    <h2>Request Parameters</h2>
+
+    <h3>Query Parameters</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Required</th>
+                <th>Description</th>
+                <th>Default</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>siteId</code></td>
+                <td>String</td>
+                <td>No</td>
+                <td>Filter detections by site ID.</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td><code>zoneId</code></td>
+                <td>String</td>
+                <td>No</td>
+                <td>Filter detections by zone ID.</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td><code>cameraId</code></td>
+                <td>String</td>
+                <td>No</td>
+                <td>Filter detections by camera ID.</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td><code>start</code></td>
+                <td>Integer</td>
+                <td>No</td>
+                <td>Start timestamp (ms) for filtering detections.</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td><code>end</code></td>
+                <td>Integer</td>
+                <td>No</td>
+                <td>End timestamp (ms) for filtering detections.</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td><code>bin</code></td>
+                <td>String or Integer</td>
+                <td>No</td>
+                <td>
+                    Bin size for aggregating detections by time intervals. Can be a named value (<code>hour</code>,
+                    <code>day</code>, <code>week</code>, <code>month</code>) or a custom bin size in milliseconds.
+                </td>
+                <td>-</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Headers</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Header</th>
+                <th>Required</th>
+                <th>Description</th>
+                <th>Example</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>x-customer-id</code></td>
+                <td>Yes</td>
+                <td>Customer ID for authentication and filtering.</td>
+                <td><code>your_customer_id</code></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Response</h2>
+
+    <h3>Success (200 OK)</h3>
+    <pre>
+[
+    {
+        "id": "detection1",
+        "customerId": "customer1",
+        "siteId": "siteA",
+        "zoneId": "zoneB",
+        "cameraId": "cameraC",
+        "ts": 1694851200000,
+        "totalSpaces": 50,
+        "occupiedSpaces": 20
+    },
+    // ... more detections ...
+]
+    </pre>
+    <p>If <code>bin</code> is provided, the response is an array of binned detection objects:</p>
+    <pre>
+[
+    {
+        "ts": 1694851500000,
+        "customerId": "customer1",
+        "siteId": "siteA",
+        "zoneId": "zoneB",
+        "cameraId": "cameraC",
+        "minTotalSpaces": 45,
+        "minOccupiedSpaces": 18,
+        "meanTotalSpaces": 48,
+        "meanOccupiedSpaces": 19,
+        "maxTotalSpaces": 50,
+        "maxOccupiedSpaces": 20,
+        "detectionIds": ["detection1", "detection2", "detection3"]
+    },
+    // ... more bins ...
+]
+    </pre>
+
+    <h3>Error (400/403/404/500)</h3>
+    <pre>
+{
+    "status": "error",
+    "msg": "Not found: customerId not found"
+}
+    </pre>
+
+    <h2>Lambda Function: dashboard_get_detections/index.js</h2>
+    <p>
+        This Lambda function handles the <code>GET /detections</code> route. It performs the following tasks:
+    </p>
+    <ul>
+        <li>Validates request headers and parameters.</li>
+        <li>Retrieves detection data from DynamoDB, applying filters based on query parameters.</li>
+        <li>
+            Optionally bins detections by time intervals if <code>bin</code> is specified. If the bin is a named value
+            (<code>hour</code>, <code>day</code>, <code>week</code>, <code>month</code>), pre-compiled tables are used.
+        </li>
+        <li>Returns the processed detection data as a JSON response.</li>
+    </ul>
+
+    <h2>Important Notes</h2>
+    <ul>
+        <li>All detections are filtered by the provided <code>x-customer-id</code> header.</li>
+        <li>Binning aggregates detections within each time interval, providing min, mean, max, and detection IDs.</li>
+        <li>Division by zero is avoided in mean calculations; if no detections are present in a bin, mean values are set
+            to 0.</li>
+        <li>Errors are returned with appropriate status codes and messages.</li>
+    </ul>
+</body>
+
+</html>

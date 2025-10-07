@@ -1,0 +1,82 @@
+{
+  "apis": [
+    {
+      "type": "http",
+      "name": "device",
+      "description": "Orangead parking lot device http api",
+      "allowCredentials": true,
+      "cloudfront": "device",
+      "allowOrigins": [
+        "http://localhost:8080",
+        "http://localhost:8081",
+        "http://localhost:8082",
+        "http://localhost:8083"
+      ],
+      "authorizerFunction": {
+        "name": "device_api_authorizer",
+        "activate": false,
+        "resultsCacheTtl": 10,
+        "identitySource": [
+          "$request.header.X-CUSTOMER-ID",
+          "$request.header.X-API-KEY",
+          "$request.header.X-SECREY-KEY"
+        ]
+      },
+      "keyEnv": {
+        "dev": "019949D0-BDE6-724C-9853-BC274CF48337",
+        "test": "019958B2-2216-7C1D-8D39-5B2BC1B7A4D0",
+        "prod": "019958B2-53D8-763D-8495-A8E4D6BB59C4"
+      },
+      "throttlingRateLimit": 100,
+      "throttlingBurstLimit": 200
+    }
+  ],
+  "lambdaSpecs": [
+    {
+      "name": "device_api_authorizer",
+      "description": "Authorizer for device HTTP API routes.",
+      "tables": {
+        "read": [
+          "customers",
+          "general_parameters"
+        ]
+      },
+      "layers": [
+        {
+          "name": "awsHelpers"
+        }
+      ]
+    },
+    {
+      "name": "device_post_detections",
+      "description": "Post a detection.",
+      "tables": {
+        "read": [
+          "customers",
+          "detections",
+          "general_parameters",
+          "system_states"
+        ],
+        "write": [
+          "detections",
+          "system_states"
+        ]
+      },
+      "apis": [
+        {
+          "type": "http",
+          "name": "device",
+          "path": "/detections",
+          "methods": [
+            "POST"
+          ]
+        }
+      ],
+      "layers": [
+        {
+          "name": "awsHelpers"
+        }
+      ]
+    }
+  ]
+}

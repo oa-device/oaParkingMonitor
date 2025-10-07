@@ -1,3 +1,4 @@
+# move the python stuf in directory where there is python code.
 # Python cache files at all levels
 __pycache__/
 */__pycache__/
@@ -12,7 +13,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+#lib/
 lib64/
 parts/
 sdist/

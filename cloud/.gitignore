@@ -1,0 +1,43 @@
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Configuration (except examples)
+config.yaml
+.env
+.env.local
+
+# Test coverage
+.coverage
+htmlcov/
+
+# Data and outputs
+outputs/
+assets/sample_images/
+assets/test_data/
+out/
+out
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+temp/
+tmp/
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+#AWS
+cdk.out/
+node_modules/
+scripts/backups/

@@ -1,0 +1,98 @@
+{
+  "tables": [
+    {
+      "name": "anomalies",
+      "pointInTimeRecovery": true,
+      "description": "Detected system anomalies.",
+      "enableStream": true
+    },
+    {
+      "name": "cameras",
+      "pointInTimeRecovery": true,
+      "description": "Camera configuration details.",
+      "enableStream": true
+    },
+    {
+      "name": "connections",
+      "pointInTimeRecovery": false,
+      "description": "Websocket connections.",
+      "enableStream": false
+    },
+    {
+      "name": "customers",
+      "pointInTimeRecovery": true,
+      "description": "Parking system customers.",
+      "enableStream": false
+    },
+    {
+      "name": "detections",
+      "pointInTimeRecovery": true,
+      "description": "Number of cars detected over time by cameras.",
+      "enableStream": false
+    },
+    {
+      "name": "detections_bin_hour",
+      "pointInTimeRecovery": true,
+      "description": "Number of cars detected over time, binned by hours.",
+      "enableStream": false
+    },
+    {
+      "name": "detections_bin_day",
+      "pointInTimeRecovery": true,
+      "description": "Number of cars detected over time, binned by days.",
+      "enableStream": false
+    },
+    {
+      "name": "detections_bin_week",
+      "pointInTimeRecovery": true,
+      "description": "Number of cars detected over time, binned by weeks.",
+      "enableStream": false
+    },
+    {
+      "name": "detections_bin_month",
+      "pointInTimeRecovery": true,
+      "description": "Number of cars detected over time, binned by months.",
+      "enableStream": false
+    },
+    {
+      "name": "detections_bin_year",
+      "pointInTimeRecovery": true,
+      "description": "Number of cars detected over time, binned by years.",
+      "enableStream": false
+    },
+    {
+      "name": "general_parameters",
+      "pointInTimeRecovery": true,
+      "description": "System's general parameters.",
+      "enableStream": false
+    },
+    {
+      "name": "sessions",
+      "pointInTimeRecovery": false,
+      "description": "Dashboard user sessions.",
+      "enableStream": false
+    },
+    {
+      "name": "sites",
+      "pointInTimeRecovery": true,
+      "description": "Customer's sites.",
+      "enableStream": false
+    },
+    {
+      "name": "system_states",
+      "pointInTimeRecovery": true,
+      "description": "Keeps misc operation states (like ts of a last maintenance scan, counters, etc).",
+      "enableStream": false
+    }
+  ],
+  "buckets": [
+    {
+      "name": "parking-lots-media",
+      "public": false,
+      "uploadAssets": false,
+      "allowedOrigins": [
+        "*"
+      ]
+    }
+  ]
+}

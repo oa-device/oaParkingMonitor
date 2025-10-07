@@ -1,0 +1,15 @@
+{
+  "name": "awshelpers",
+  "version": "1.0.0",
+  "description": "",
+  "main": "awsHelpers.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Edouard Boily",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1536.0",
+    "nanoid": "^5.0.7"
+  }
+}

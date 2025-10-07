@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# Output directory for backups
+outputDir=./backups/
+
+# Current timestamp
+current_timestamp=$(date +%Y%m%d%H%M%S)
+
+# Initialize flags for tables and buckets
+backup_tables=false
+backup_buckets=false
+
+# Function to display help
+show_help() {
+    echo "Usage: ./backup [options]"
+    echo ""
+    echo "Options:"
+    echo "  -t, --tables   Backup the tables"
+    echo "  -b, --buckets  Backup the buckets"
+    echo "  -h, --help     Show this help message"
+}
+
+# Parse command-line arguments
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -t|--tables) backup_tables=true ;;
+        -b|--buckets) backup_buckets=true ;;
+        -h|--help) show_help; exit 0 ;;
+        *) echo "Unknown parameter: $1"; show_help; exit 1 ;;
+    esac
+    shift
+done
+
+# Ensure at least one option is selected
+if [ "$backup_tables" = false ] && [ "$backup_buckets" = false ]; then
+    echo "You must specify at least one of -t/--tables or -b/--buckets"
+    show_help
+    exit 1
+fi
+
+# Backup tables if the flag is set
+if [ "$backup_tables" = true ]; then
+    echo "Backing up tables..."
+
+    # Create directories for tables
+    mkdir -p ${outputDir}/${current_timestamp}/tables
+
+    # Initialize an empty array for table names
+    table_names=()
+
+    # Execute the Node.js script and read output line by line to get table names
+    while IFS= read -r line; do
+        table_names+=("$line")
+    done < <(node tableList.js)
+
+    # Iterate over the array and back up each table
+    for table_name in "${table_names[@]}"; do
+        echo "Creating backup of table ${table_name}"
+        dest=${outputDir}${current_timestamp}/tables/${table_name}.json
+        node ./tableGet.js -t ${table_name} > ${dest}
+        
+        # Use zip instead of compress
+        zip "${dest}.zip" "${dest}"
+        rm "${dest}" # Remove the unzipped JSON file after compression
+    done
+fi
+
+# Backup buckets if the flag is set
+if [ "$backup_buckets" = true ]; then
+    echo "Backing up buckets..."
+
+    # Create directories for tables and buckets
+    mkdir -p ${outputDir}/${current_timestamp}/buckets
+
+    bucket_names=("atlas-dev-entrepot")
+    for bucket_name in "${bucket_names[@]}"; do
+        echo "Creating backup of bucket ${bucket_name}"
+        aws s3 sync s3://${bucket_name} ${outputDir}/${current_timestamp}/buckets/${bucket_name}
+        
+        # Compress the entire bucket directory
+        zip -r ${outputDir}/${current_timestamp}/buckets/${bucket_name}.zip ${outputDir}/${current_timestamp}/buckets/${bucket_name}
+        rm -rf ${outputDir}/${current_timestamp}/buckets/${bucket_name} # Remove unzipped bucket folder
+    done
+fi
+
+echo "Backup completed successfully."

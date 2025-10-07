@@ -1,0 +1,29 @@
+{
+  "name": "multistack",
+  "version": "0.1.0",
+  "bin": {
+    "multistack": "bin/multistack.js"
+  },
+  "scripts": {
+    "build-lambdas": "node ./scripts/build-lambdas.js",
+    "deploy": "npm run build-lambdas && npx cdk deploy --all",
+    "diff": "npx cdk diff --all",
+    "build": "echo \"The build step is not required when using JavaScript!\" && exit 0",
+    "cdk": "cdk",
+    "test": "jest",
+    "cloc": "cloc --exclude-dir=node_modules,scripts,cdk.out,old ."
+  },
+  "devDependencies": {
+    "aws-cdk": "^2.118.0",
+    "jest": "^29.7.0"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-s3-notifications": "^1.204.0",
+    "aws-cdk-lib": "^2.121.1",
+    "aws-sdk": "^2.1536.0",
+    "axios": "^1.6.5",
+    "constructs": "^10.0.0",
+    "dotenv": "^16.3.2",
+    "websocket": "^1.0.34"
+  }
+}

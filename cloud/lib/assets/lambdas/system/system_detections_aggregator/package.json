@@ -1,0 +1,18 @@
+{
+  "name": "system_detections_aggregator",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "Edouard Boily",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "luxon": "^3.7.2"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
+  }
+}

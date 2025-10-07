@@ -1,0 +1,8 @@
+{
+  "layers": [
+    {
+      "name": "awsHelpers",
+      "description": "AWS Helper functions"
+    }
+  ]
+}

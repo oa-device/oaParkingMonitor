@@ -1,0 +1,47 @@
+{
+  "lambdaSpecs": [
+    {
+      "name": "system_detections_aggregator",
+      "description": "Post a detection.",
+      "tables": {
+        "read": [
+          "detections",
+          "detections_bin_hour",
+          "detections_bin_day",
+          "detections_bin_week",
+          "detections_bin_month",
+          "detections_bin_year",
+          "general_parameters",
+          "sites",
+          "system_states"
+        ],
+        "write": [
+          "detections_bin_hour",
+          "detections_bin_day",
+          "detections_bin_week",
+          "detections_bin_month",
+          "detections_bin_year",
+          "general_parameters",
+          "system_states"
+        ]
+      },
+      "eventSources": [
+        {
+          "type": "scheduler",
+          "schedule": {
+            "minute": "10",
+            "hour": "*",
+            "day": "*",
+            "month": "*",
+            "year": "*"
+          }
+        }
+      ],
+      "layers": [
+        {
+          "name": "awsHelpers"
+        }
+      ]
+    }
+  ]
+}

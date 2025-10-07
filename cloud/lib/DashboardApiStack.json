@@ -1,0 +1,127 @@
+{
+  "apis": [
+    {
+      "type": "ws",
+      "name": "ws_dashboard",
+      "description": "websocket api for dashboard",
+      "integrations": {
+        "connect": "dashboard_ws_listener",
+        "disconnect": "dashboard_ws_listener",
+        "default": "dashboard_ws_listener"
+      }
+    },
+    {
+      "type": "http",
+      "name": "dashboard",
+      "description": "Parking dashboard webapp HTTP API",
+      "allowCredentials": true,
+      "cloudfront": "dashboard",
+      "allowOrigins": [
+        "http://localhost:8080",
+        "http://localhost:8081",
+        "http://localhost:8082",
+        "http://localhost:8083"
+      ],
+      "authorizerFunction": {
+        "name": "dashboard_api_authorizer",
+        "activate": false,
+        "resultsCacheTtl": 10,
+        "identitySource": [
+          "$request.header.X-CUSTOMER-ID",
+          "$request.header.X-API-KEY",
+          "$request.header.X-AUTH-TOKEN"
+        ]
+      },
+      "keyEnv": {
+        "dev": "01995409-9122-7F96-A9A3-566F3AD190DD",
+        "test": "019958B1-4471-79C5-8FE1-2FF548EE93DC",
+        "prod": "019958B1-A3C8-780F-9B56-A9EABA420EFE"
+      },
+      "throttlingRateLimit": 10,
+      "throttlingBurstLimit": 20
+    }
+  ],
+  "lambdaSpecs": [
+    {
+      "name": "dashboard_api_authorizer",
+      "description": "Authorizer for this HTTP API routes.",
+      "tables": {
+        "read": [
+          "customers",
+          "general_parameters",
+          "sessions"
+        ],
+        "write": [
+          "anomalies"
+        ]
+      },
+      "layers": [
+        {
+          "name": "awsHelpers"
+        }
+      ],
+      "apis":[
+        {
+          "type": "http",
+          "name": "editor"
+        }
+      ]
+    },
+    {
+      "name": "dashboard_get_detections",
+      "description": "Get detections for dashboard.",
+      "tables": {
+        "read": [
+          "customers",
+          "detections",
+          "detections_bin_hour",
+          "detections_bin_day",
+          "detections_bin_week",
+          "detections_bin_month",
+          "detections_bin_year",
+          "general_parameters",
+          "system_states"
+        ]
+      },
+      "layers": [
+        {
+          "name": "awsHelpers"
+        }
+      ],
+      "apis": [
+        {
+          "type": "http",
+          "name": "dashboard",
+          "path": "/detections",
+          "methods": [
+            "GET"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dashboard_ws_listener",
+      "description": "Websocket listener for dashboard",
+      "tables": {
+        "read": [
+          "general_parameters",
+          "connections"
+        ],
+        "write": [
+          "connections"
+        ]
+      },
+      "apis": [
+        {
+          "type": "ws",
+          "name": "ws_dashboard"
+        }
+      ],
+      "layers": [
+        {
+          "name": "awsHelpers"
+        }
+      ]
+    }
+  ]
+}

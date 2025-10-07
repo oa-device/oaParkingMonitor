@@ -1,0 +1,77 @@
+#!/usr/local/bin/bash
+
+# This script replaces the content of the s3 local directories with the content of their corresponding buckets.
+
+exit
+
+SCRIPDIR="/Users/eboily/devlocal/orangeAD/code/scripts"
+CLEAR="${SCRIPDIR}/clearTable"
+PUT="${SCRIPDIR}/putTable"
+GET="${SCRIPDIR}/simple_get"
+PROJECT=jpr
+ENVIRONMENT=dev
+DOIT=
+
+if [ $# -eq 0 ]; then
+    >&2 echo "No arguments provided"
+    echo “Usage: $0 -e dev\|preprod\|prod -f \<tablename\>.json\|all \[-d\]” >&2; 
+    exit 1
+fi
+
+
+while getopts ":e:f:d" opt; do
+  case $opt in
+    e) ENVIRONMENT="$OPTARG"
+    ;;
+    f) FILE="$OPTARG"
+    ;;
+    d) DOIT=-d
+    ;;
+    \?) echo "Invalid option -$OPTARG" >&2
+    exit 1
+    ;;
+  esac
+
+  case $OPTARG in
+    -*) echo "Option $opt needs a valid argument"
+    exit 1
+    ;;
+  esac
+done
+
+# echo "ENVIRONMENT=$ENVIRONMENT"
+# echo "FILE=$FILE"
+# echo "DOIT=$DOIT"
+
+
+
+if [ $FILE == "all" ]
+then
+    TABLES=($( ls -1 *.json | sed -e 's/\.json$//' ))
+else
+    TABLES=($( echo $FILE | sed -e 's/\.json$//' ))
+fi
+
+if [ $2 == "-d" ]
+then
+    DOIT=-d
+fi
+
+
+for TABLE in ${TABLES[@]}
+do
+    TABLENAME=${PROJECT}_${ENVIRONMENT}_${TABLE}
+    echo "    Processing table ${TABLENAME}"
+    FILE=${TABLE}.json
+    if [ -e "$FILE" ]; then
+        if [ "$DOIT" == "-d" ]; then
+            ${GET} -t ${TABLENAME} > ${TABLE}.json
+        else
+            echo "${GET} -t ${TABLENAME} > ${TABLE}.json"
+        fi
+    else
+        echo "Cannot find file ${FILE}" >&2
+        exit 1
+    fi
+
+done
