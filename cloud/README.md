@@ -9,8 +9,8 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app. The build ste
 If you have multiple profiles defined in your `~/.aws/config` like:
 
 ```
-[profile kampusmedia]
-region=us-east-1
+[profile parking001]
+region=ca-central-1
 output=json
 aws_access_key_id=<access key>
 aws_secret_access_key=<secret key>
@@ -19,7 +19,7 @@ aws_secret_access_key=<secret key>
 Make sure you set your AWS profile to diff or deploy:
 
 ```bash
-export AWS_PROFILE=kampusmedia
+export AWS_PROFILE=parking001
 ```
 
 To list your profiles:
