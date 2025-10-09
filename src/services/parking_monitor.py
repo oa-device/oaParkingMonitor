@@ -320,10 +320,21 @@ class ParkingMonitorService:
     
     async def _storage_loop(self):
         """Background task to persist detection data"""
+        cleanup_counter = 0
+        cleanup_interval = 100  # Run cleanup every 100 snapshots (~3 hours with 2-min interval)
+
         while self.running:
             try:
                 # Wait for next snapshot
                 await asyncio.sleep(self.config.processing.snapshot_interval)
+
+                # Increment cleanup counter
+                cleanup_counter += 1
+
+                # Run cleanup periodically
+                if cleanup_counter >= cleanup_interval:
+                    await self._cleanup_old_data()
+                    cleanup_counter = 0
                 
                 # Get latest snapshot data
                 if self.detector.last_snapshot:
@@ -367,7 +378,28 @@ class ParkingMonitorService:
             except Exception as e:
                 self.logger.error(f"Storage loop error: {e}")
                 await asyncio.sleep(5)  # Wait before retry
-    
+
+    async def _cleanup_old_data(self):
+        """Clean up old snapshots and detection data older than retention period"""
+        try:
+            from ..utils.paths import ParkingPaths
+
+            retention_days = self.config.processing.data_retention_days
+            paths = ParkingPaths()
+
+            # Clean up old snapshots
+            deleted_snapshots = paths.cleanup_old_snapshots(days_to_keep=retention_days)
+
+            # Clean up old detection data from EdgeStorage
+            deleted_detections = await self.edge_storage.cleanup_old_detections(retention_days)
+
+            total_deleted = deleted_snapshots + deleted_detections
+            if total_deleted > 0:
+                self.logger.info(f"Cleanup completed: Deleted {deleted_snapshots} snapshot files and {deleted_detections} old detection records (retention: {retention_days} days)")
+
+        except Exception as e:
+            self.logger.error(f"Cleanup error: {e}")
+
     def _get_memory_usage_mb(self) -> float:
         """Get current memory usage in MB"""
         try:
@@ -375,7 +407,7 @@ class ParkingMonitorService:
             return psutil.virtual_memory().used / (1024 * 1024)
         except:
             return 0.0
-    
-    
+
+
     # Analytics and export functionality removed for edge simplification
     # Central API handles data aggregation and analysis

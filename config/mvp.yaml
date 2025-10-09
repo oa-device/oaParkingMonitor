@@ -7,6 +7,7 @@ processing:
   snapshot_interval: 120  # seconds between snapshots (2 minutes for production parking monitoring)
   confidence_threshold: 0.20  # Optimal threshold
   model_path: "models/yolo11m.pt"
+  data_retention_days: 14  # Days to retain snapshots and detection data (2 weeks)
 
 # Camera Hardware Settings
 camera:
