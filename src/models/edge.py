@@ -124,10 +124,19 @@ class ConfigResponse(BaseModel):
     version: VersionInfo = Field(..., description="Version and deployment information")
 
 
+class ProcessingConfigUpdate(BaseModel):
+    """Runtime processing configuration updates"""
+    snapshot_interval: Optional[int] = Field(None, ge=1, le=300, description="Snapshot interval in seconds")
+    confidence_threshold: Optional[float] = Field(None, ge=0.1, le=1.0, description="Detection confidence threshold")
+    nms_threshold: Optional[float] = Field(None, ge=0.1, le=1.0, description="Non-maximum suppression threshold")
+    max_detections: Optional[int] = Field(None, ge=1, le=1000, description="Maximum detections per frame")
+
+
 class ConfigUpdateRequest(BaseModel):
     """Configuration update request"""
     apiKey: str = Field(..., description="API key for authentication")
-    deployment: DeploymentConfig
+    deployment: Optional[DeploymentConfig] = Field(None, description="Deployment configuration updates")
+    processing: Optional[ProcessingConfigUpdate] = Field(None, description="Processing configuration updates")
 
 
 # Camera Debug Models

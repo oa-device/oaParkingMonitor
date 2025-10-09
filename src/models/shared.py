@@ -60,7 +60,7 @@ class ProcessingSettings(BaseModel):
     processing_enabled: bool = Field(True, description="Whether processing is enabled")
     confidence_threshold: float = Field(0.5, ge=0.1, le=1.0, description="Detection confidence threshold")
     nms_threshold: float = Field(0.4, ge=0.1, le=1.0, description="Non-maximum suppression threshold")
-    snapshot_interval: int = Field(5, ge=1, le=60, description="Snapshot interval in seconds")
+    snapshot_interval: int = Field(120, ge=1, le=300, description="Snapshot interval in seconds (default: 2 minutes for production)")
     max_detections: int = Field(100, ge=1, le=1000, description="Maximum detections per frame")
     model_path: str = Field("models/yolo11m.pt", description="Path to YOLO model file")
 

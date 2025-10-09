@@ -206,17 +206,117 @@ class ParkingMonitorService:
             old_interval = self.config.processing.snapshot_interval
             self.config_manager.load_config(config_file)
             self.config = self.config_manager.config
-            
+
             new_interval = self.config.processing.snapshot_interval
             if old_interval != new_interval:
                 self.logger.info(f"Snapshot interval changed: {old_interval}s → {new_interval}s")
-            
+
             self.logger.info("Configuration reloaded successfully")
             return True
-            
+
         except Exception as e:
             self.logger.error(f"Failed to reload configuration: {e}")
             return False
+
+    def update_runtime_config(self, processing_updates: Dict[str, Any]) -> Dict[str, Any]:
+        """Update runtime configuration dynamically
+
+        Args:
+            processing_updates: Dictionary of processing configuration updates
+
+        Returns:
+            Dict with success status and updated values
+        """
+        try:
+            updated_fields = {}
+
+            # Update snapshot_interval if provided
+            if "snapshot_interval" in processing_updates:
+                old_interval = self.config.processing.snapshot_interval
+                new_interval = processing_updates["snapshot_interval"]
+
+                # Validate range
+                if not (1 <= new_interval <= 300):
+                    raise ValueError(f"snapshot_interval must be between 1 and 300 seconds, got {new_interval}")
+
+                # Update configuration
+                self.config.processing.snapshot_interval = new_interval
+                updated_fields["snapshot_interval"] = {
+                    "old": old_interval,
+                    "new": new_interval
+                }
+                self.logger.info(f"Runtime config update: snapshot_interval {old_interval}s → {new_interval}s")
+
+            # Update confidence_threshold if provided
+            if "confidence_threshold" in processing_updates:
+                old_threshold = self.config.processing.confidence_threshold
+                new_threshold = processing_updates["confidence_threshold"]
+
+                # Validate range
+                if not (0.1 <= new_threshold <= 1.0):
+                    raise ValueError(f"confidence_threshold must be between 0.1 and 1.0, got {new_threshold}")
+
+                # Update configuration
+                self.config.processing.confidence_threshold = new_threshold
+                updated_fields["confidence_threshold"] = {
+                    "old": old_threshold,
+                    "new": new_threshold
+                }
+                self.logger.info(f"Runtime config update: confidence_threshold {old_threshold} → {new_threshold}")
+
+            # Update nms_threshold if provided
+            if "nms_threshold" in processing_updates:
+                old_threshold = self.config.processing.nms_threshold
+                new_threshold = processing_updates["nms_threshold"]
+
+                # Validate range
+                if not (0.1 <= new_threshold <= 1.0):
+                    raise ValueError(f"nms_threshold must be between 0.1 and 1.0, got {new_threshold}")
+
+                # Update configuration
+                self.config.processing.nms_threshold = new_threshold
+                updated_fields["nms_threshold"] = {
+                    "old": old_threshold,
+                    "new": new_threshold
+                }
+                self.logger.info(f"Runtime config update: nms_threshold {old_threshold} → {new_threshold}")
+
+            # Update max_detections if provided
+            if "max_detections" in processing_updates:
+                old_max = self.config.processing.max_detections
+                new_max = processing_updates["max_detections"]
+
+                # Validate range
+                if not (1 <= new_max <= 1000):
+                    raise ValueError(f"max_detections must be between 1 and 1000, got {new_max}")
+
+                # Update configuration
+                self.config.processing.max_detections = new_max
+                updated_fields["max_detections"] = {
+                    "old": old_max,
+                    "new": new_max
+                }
+                self.logger.info(f"Runtime config update: max_detections {old_max} → {new_max}")
+
+            # Propagate changes to detector if it's running
+            if hasattr(self.detector, 'update_config'):
+                self.detector.update_config(self.config.processing)
+
+            self.logger.info(f"Runtime configuration updated successfully: {list(updated_fields.keys())}")
+
+            return {
+                "success": True,
+                "updated_fields": updated_fields,
+                "message": f"Updated {len(updated_fields)} configuration parameters"
+            }
+
+        except Exception as e:
+            self.logger.error(f"Failed to update runtime configuration: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "message": "Configuration update failed"
+            }
     
     async def _storage_loop(self):
         """Background task to persist detection data"""

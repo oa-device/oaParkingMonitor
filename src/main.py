@@ -23,10 +23,11 @@ load_dotenv(env_file, override=True)  # Override LaunchAgent env vars with .env 
 from typing import Union, List
 
 import uvicorn
-from fastapi import FastAPI, Request, Query, HTTPException
+from fastapi import FastAPI, Request, Query, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.security import HTTPAuthorizationCredentials
 
 # Import modular components
 from .api.models import ConfigResponse
@@ -40,12 +41,14 @@ from .models import CameraPresetsResponse, CameraOperationResponse
 from .models.edge import (
     DetectionBatch, DetectionSnapshot, HealthResponse,
     ErrorResponse, OperationResponse, CameraStatus, ConfirmUploadRequest,
-    ConfirmUploadResponse, ZoneChange, DeltaResponse
+    ConfirmUploadResponse, ZoneChange, DeltaResponse, ConfigUpdateRequest,
+    ProcessingConfigUpdate
 )
 from .storage.edge_storage import EdgeStorage
 
 # Import middleware
 from .middleware.compression import OptimizedGzipMiddleware
+from .middleware.auth import validate_api_key, security
 
 # Import caching utilities
 from .utils.cache import (
@@ -811,18 +814,73 @@ async def get_full_configuration(request: Request):
 
 
 @app.post("/config", response_model=OperationResponse, tags=["Core - Configuration"])
-async def update_configuration():
-    """Update deployment identifiers - API key protected
+async def update_configuration(
+    request: ConfigUpdateRequest,
+    http_request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Update runtime configuration - API key protected
 
-    Allows remote configuration of device identity for central API integration.
-    Requires valid API key for authentication.
+    Allows dynamic updates to processing parameters like snapshot_interval,
+    confidence_threshold, and other runtime settings.
+
+    Supports:
+    - Processing configuration: snapshot_interval, confidence_threshold, nms_threshold, max_detections
+    - Deployment configuration: customerId, siteId, zoneId, cameraId (future implementation)
+
+    Authentication: Bearer token or x-api-key header required
     """
     try:
-        return OperationResponse(
-            status="not_implemented",
-            message="Configuration update not available - edge device uses static configuration"
+        # Validate API key
+        await validate_api_key(http_request, credentials)
+
+        # Process processing configuration updates
+        if request.processing:
+            processing_dict = request.processing.model_dump(exclude_unset=True)
+            if processing_dict:
+                # Update runtime configuration
+                result = parking_service.update_runtime_config(processing_dict)
+
+                if result["success"]:
+                    logging.info(f"Runtime configuration updated: {result['updated_fields']}")
+                    return OperationResponse(
+                        status="success",
+                        message=f"Configuration updated: {result['message']}"
+                    )
+                else:
+                    logging.error(f"Runtime configuration update failed: {result['error']}")
+                    return JSONResponse(
+                        content=ErrorResponse(
+                            error="Configuration Update Failed",
+                            message=result["error"]
+                        ).model_dump(),
+                        status_code=400
+                    )
+
+        # Process deployment configuration updates (future implementation)
+        if request.deployment:
+            # TODO: Implement deployment configuration updates
+            logging.warning("Deployment configuration updates not yet implemented")
+            return JSONResponse(
+                content=ErrorResponse(
+                    error="Not Implemented",
+                    message="Deployment configuration updates coming soon"
+                ).model_dump(),
+                status_code=501
+            )
+
+        # No valid configuration provided
+        return JSONResponse(
+            content=ErrorResponse(
+                error="Invalid Request",
+                message="No valid configuration updates provided. Include 'processing' or 'deployment' sections."
+            ).model_dump(),
+            status_code=400
         )
 
+    except HTTPException:
+        # Re-raise HTTP exceptions (like authentication errors)
+        raise
     except Exception as e:
         logging.error(f"Configuration update error: {e}")
         return JSONResponse(

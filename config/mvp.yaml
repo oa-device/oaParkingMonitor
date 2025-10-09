@@ -4,7 +4,7 @@
 # AI Processing Configuration
 processing:
   processing_enabled: true
-  snapshot_interval: 5  # seconds between snapshots
+  snapshot_interval: 120  # seconds between snapshots (2 minutes for production parking monitoring)
   confidence_threshold: 0.20  # Optimal threshold
   model_path: "models/yolo11m.pt"
 
