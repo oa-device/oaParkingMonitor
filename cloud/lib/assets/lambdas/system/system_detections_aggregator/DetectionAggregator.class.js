@@ -42,21 +42,8 @@ module.exports = class DetectionAggregator {
      *   <li>timezone: string (IANA timezone)</li>
      *   <li>id: string (unique detection ID)</li>
      * </ul>
-     * @example
-     * Example detection object:
-     * <pre>
-     * {
-     *   ts: 1697059200000,
-     *   cameraId: "cam123",
-     *   customerId: "cust456",
-     *   siteId: "site789",
-     *   zoneId: "zone101",
-     *   occupiedSpaces: 5,
-     *  totalSpaces: 10,
-     *  timezone: "America/New_York",
-     *  id: "detection001"
-     * }
-     * </pre>
+     * <br/>
+     * <br/>
      * @param {Object} existingBins - Existing bins to update (optional). Should contain:
      * <ul>
      *   <li>hourBins: Array of existing hour bins</li>
@@ -65,6 +52,35 @@ module.exports = class DetectionAggregator {
      *   <li>monthBins: Array of existing month bins</li>
      *   <li>yearBins: Array of existing year bins</li>
      * </ul>
+     * where a bin is:
+     * <ul>
+     *   <li>id: string (unique bin ID)</li>
+     *   <li>binSize: string ("hour", "day", "week", "month", "year")</li>
+     *   <li>cameraId: string</li>
+     *   <li>customerId: string</li>
+     *   <li>siteId: string</li>
+     *   <li>zoneId: string</li>
+     *   <li>timezone: string (IANA timezone)</li>
+     *   <li>startTs: number (bin start timestamp in ms)</li>
+     *   <li>startTsH: string (ISO formatted start time)</li>
+     *   <li>endTs: number (bin end timestamp in ms)</li>
+     *   <li>endTsH: string (ISO formatted end time)</li>
+     *   <li>midTs: number (midpoint timestamp in ms)</li>
+     *   <li>midTsH: string (ISO formatted midpoint time)</li>
+     *   <li>aggregatedIds: Array of detection IDs (only for hour bins)</li>
+     *   <li>aggregatedNumber: number (count of aggregated detections)</li>
+     *   <li>sumOccupiedSpaces: number (sum of occupied spaces)</li>
+     *   <li>sumTotalSpaces: number (sum of total spaces)</li>
+     *   <li>minOccupiedSpaces: number (minimum occupied spaces)</li>
+     *   <li>maxOccupiedSpaces: number (maximum occupied spaces)</li>
+     *   <li>meanOccupiedSpaces: number (mean occupied spaces)</li>
+     *   <li>meanTotalSpaces: number (mean total spaces)</li>
+     *   <li>occupationRate: number (meanOccupiedSpaces / meanTotalSpaces)</li>
+     *   <li>createdAt: number (timestamp in ms)</li>
+     *   <li>updatedAt: number (timestamp in ms)</li>
+     * </ul>
+     * Note that only hour bins have the property `aggregatedIds` to track individual detection IDs.
+     * Higher-level bins (day, week, month, year) do not track individual IDs to save memory.
      * @returns {Object} Modified aggregated bins:
      * <ul>
      *   <li>hourBins: Array of hour bins</li>

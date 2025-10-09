@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>DetectionAggregator — Developer Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+            line-height: 1.6;
+            color: #222;
+            margin: 24px;
+            max-width: 1000px;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 6px;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-top: 28px;
+        }
+
+        h3 {
+            font-size: 16px;
+            margin-top: 20px;
+        }
+
+        pre {
+            background: #f6f8fa;
+            padding: 12px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0 20px 0;
+        }
+
+        table th,
+        table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        table th {
+            background: #f3f4f6;
+        }
+
+        .note {
+            background: #fffbe6;
+            border-left: 4px solid #ffd24d;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 12px 0;
+        }
+
+        .tip {
+            background: #e6fffa;
+            border-left: 4px solid #3dd7bf;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 12px 0;
+        }
+
+        .muted {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .kbd {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+            box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>DetectionAggregator</h1>
+        <div class="muted">Class aggregating parking detections into time-based bins: <strong>hour</strong>,
+            <strong>day</strong>, <strong>week</strong>, <strong>month</strong>, <strong>year</strong>. Implemented with
+            Luxon for timezone-aware binning.</div>
+        <p class="muted">Author: <strong>Edouard Boily &lt;edouard@orangead.ca&gt;</strong> — © 2025 Orangead Media Inc.
+        </p>
+    </header>
+
+    <section>
+        <h2>Overview</h2>
+        <p>
+            <code>DetectionAggregator</code> collects raw parking detections and groups them into hierarchical bins.
+            Hour-level bins are built directly from detections and store individual detection IDs (to enable
+            deduplication and auditing).
+            Higher-level bins (day / week / month / year) are rolled up from lower-level bins and store only aggregated
+            numeric metrics (counts, sums, min/max/mean, occupation rate) to remain memory-efficient.
+        </p>
+
+        <div class="note">
+            <strong>Design notes:</strong>
+            <ul>
+                <li>Hour bins store <code>aggregatedIds</code> — other bins do not.</li>
+                <li>All time truncation and aggregation are done in the camera's IANA timezone for consistency.</li>
+                <li>The class supports merging into existing bins when passed via the <code>existingBins</code>
+                    parameter. This enables reprocessing and handling late/out-of-order detections without duplicating
+                    bins.</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h2>Quick usage</h2>
+        <pre><code>// Node (CommonJS)
+const { DateTime } = require('luxon');
+const DetectionAggregator = require('./DetectionAggregator.class');
+
+const aggregator = new DetectionAggregator();
+
+// Prepare array of detections (see schema below)
+const detections = [
+  { id: 'd1', cameraId: 'cam1', ts: 1760000000000, timezone: 'America/Montreal', occupiedSpaces: 2, totalSpaces: 12, customerId:'cust1', siteId:'site1', zoneId:'zone1' },
+  // ...
+];
+
+// First run — no existing bins
+const { hourBins, dayBins, weekBins, monthBins, yearBins } = aggregator.aggregate(detections);
+
+// Later: new detections arrive; pass the hourBins back in to merge
+const newDetections = [ /* ... */ ];
+const updated = aggregator.aggregate(newDetections, { hourBins, dayBins, monthBins, weekBins, yearBins });
+</code></pre>
+    </section>
+
+    <section>
+        <h2>Public API</h2>
+
+        <h3><code>constructor()</code></h3>
+        <p>Creates a new <code>DetectionAggregator</code> instance. No constructor options currently.</p>
+
+        <h3 id="aggregate"><code>aggregate(detections, existingBins)</code></h3>
+        <p><strong>Purpose:</strong> Aggregate detections into hour bins and roll up to day/week/month/year, merging
+            into existing bins when provided.</p>
+
+        <h4>Parameters</h4>
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Required</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>detections</code></td>
+                <td><code>Array&lt;Object&gt;</code></td>
+                <td>Yes</td>
+                <td>Array of detection objects (see detection schema below).</td>
+            </tr>
+            <tr>
+                <td><code>existingBins</code></td>
+                <td><code>Object</code></td>
+                <td>No</td>
+                <td>
+                    Optional object containing previously computed bins to merge into:
+                    <ul>
+                        <li><code>hourBins</code>, <code>dayBins</code>, <code>weekBins</code>, <code>monthBins</code>,
+                            <code>yearBins</code> — each an array of bin objects.</li>
+                    </ul>
+                </td>
+            </tr>
+        </table>
+
+        <h4>Returns</h4>
+        <p>Object with properties:</p>
+        <ul>
+            <li><code>hourBins</code> — <code>Array&lt;Object&gt;</code></li>
+            <li><code>dayBins</code> — <code>Array&lt;Object&gt;</code></li>
+            <li><code>weekBins</code> — <code>Array&lt;Object&gt;</code></li>
+            <li><code>monthBins</code> — <code>Array&lt;Object&gt;</code></li>
+            <li><code>yearBins</code> — <code>Array&lt;Object&gt;</code></li>
+        </ul>
+
+        <div class="tip">
+            <strong>Note:</strong> Provide existing bins to enable incremental processing: new detections will be merged
+            into the matching existing bins instead of creating duplicates.
+        </div>
+    </section>
+
+    <section>
+        <h2>Internal / Private methods</h2>
+
+        <h3><code>_aggregateHourBins(detections, existingHourBins = [])</code></h3>
+        <p>Build or update hour-level bins from raw detections. Accepts <code>existingHourBins</code> to merge into.</p>
+        <ul>
+            <li>Deduplication: before adding a detection to a bin, the method checks the bin's
+                <code>aggregatedIds</code> to avoid double counting.</li>
+            <li>All time boundaries are computed with Luxon using the detection's <code>timezone</code> property.</li>
+        </ul>
+
+        <h3><code>_rollupBins(lowerBins, binSize, existingUpperBins = [])</code></h3>
+        <p>Generic rollup function: aggregates any lower-level bins into an upper-level bin defined by
+            <code>binSize</code> (e.g., <code>'day'</code>, <code>'week'</code>, <code>'month'</code>,
+            <code>'year'</code>). Seeds with <code>existingUpperBins</code> to merge updates instead of recreating.</p>
+
+        <h3><code>_makeBinKey(binSize, cameraId, startTs)</code></h3>
+        <p>Return a stable unique key string used to identify bins for merging. Format:
+            <code>&lt;cameraId&gt;_&lt;binSize&gt;_&lt;startTs&gt;</code>.</p>
+
+        <h3><code>_newBin(binSize, source, start, end, timezone, keepIds = false)</code></h3>
+        <p>Create a new bin object with canonical properties (start/end/mid timestamps, metadata, and initialization of
+            aggregation fields).</p>
+
+        <h3><code>_updateBinWithParkingDetection(bin, detection)</code></h3>
+        <p>Update a bin (typically an hour bin) with a single detection: increments counts, sums, updates min/max/mean
+            and occupationRate, and appends the detection id to <code>aggregatedIds</code> if present.</p>
+
+        <h3><code>_updateParkingBinWithBin(bin, childBin)</code></h3>
+        <p>Merge aggregated metrics from a lower-level bin (<code>childBin</code>) into an upper-level <code>bin</code>.
+            Skips empty child bins.</p>
+    </section>
+
+    <section>
+        <h2>Detection schema (input)</h2>
+        <p>Each detection object passed in the <code>detections</code> array must include the following fields:</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>id</code></td>
+                    <td><code>string</code></td>
+                    <td>Unique detection identifier (used to avoid double counting).</td>
+                </tr>
+                <tr>
+                    <td><code>cameraId</code></td>
+                    <td><code>string</code></td>
+                    <td>Camera unique identifier — aggregation is per camera.</td>
+                </tr>
+                <tr>
+                    <td><code>customerId</code></td>
+                    <td><code>string</code></td>
+                    <td>Customer / owner identifier.</td>
+                </tr>
+                <tr>
+                    <td><code>siteId</code></td>
+                    <td><code>string</code></td>
+                    <td>Site identifier.</td>
+                </tr>
+                <tr>
+                    <td><code>zoneId</code></td>
+                    <td><code>string</code></td>
+                    <td>Zone identifier.</td>
+                </tr>
+                <tr>
+                    <td><code>ts</code></td>
+                    <td><code>number</code></td>
+                    <td>Timestamp in milliseconds since epoch (UTC).</td>
+                </tr>
+                <tr>
+                    <td><code>timezone</code></td>
+                    <td><code>string</code></td>
+                    <td>IANA timezone of the camera/detection (e.g., <code>America/Montreal</code>).</td>
+                </tr>
+                <tr>
+                    <td><code>occupiedSpaces</code></td>
+                    <td><code>number</code></td>
+                    <td>Number of currently occupied spaces reported by the camera.</td>
+                </tr>
+                <tr>
+                    <td><code>totalSpaces</code></td>
+                    <td><code>number</code></td>
+                    <td>Total parking spaces for that camera/zone.</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Bin object schema (output)</h2>
+        <p>Each bin produced by the aggregator contains the following properties. Hour bins include
+            <code>aggregatedIds</code>, higher-level bins do not (to save memory).</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Property</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>id</code></td>
+                    <td><code>string</code></td>
+                    <td>Unique bin ID (constructed from cameraId, binSize and startTs)</td>
+                </tr>
+                <tr>
+                    <td><code>binSize</code></td>
+                    <td><code>string</code></td>
+                    <td>"hour" | "day" | "week" | "month" | "year"</td>
+                </tr>
+                <tr>
+                    <td><code>cameraId</code></td>
+                    <td><code>string</code></td>
+                    <td>Camera identifier</td>
+                </tr>
+                <tr>
+                    <td><code>customerId</code></td>
+                    <td><code>string</code></td>
+                    <td>Customer identifier</td>
+                </tr>
+                <tr>
+                    <td><code>siteId</code></td>
+                    <td><code>string</code></td>
+                    <td>Site identifier</td>
+                </tr>
+                <tr>
+                    <td><code>zoneId</code></td>
+                    <td><code>string</code></td>
+                    <td>Zone identifier</td>
+                </tr>
+                <tr>
+                    <td><code>timezone</code></td>
+                    <td><code>string</code></td>
+                    <td>IANA timezone used to compute boundaries</td>
+                </tr>
+                <tr>
+                    <td><code>startTs</code></td>
+                    <td><code>number</code></td>
+                    <td>Start timestamp in ms (inclusive)</td>
+                </tr>
+                <tr>
+                    <td><code>startTsH</code></td>
+                    <td><code>string</code></td>
+                    <td>ISO-formatted start time</td>
+                </tr>
+                <tr>
+                    <td><code>endTs</code></td>
+                    <td><code>number</code></td>
+                    <td>End timestamp in ms (inclusive)</td>
+                </tr>
+                <tr>
+                    <td><code>endTsH</code></td>
+                    <td><code>string</code></td>
+                    <td>ISO-formatted end time</td>
+                </tr>
+                <tr>
+                    <td><code>midTs</code></td>
+                    <td><code>number</code></td>
+                    <td>Midpoint timestamp in ms</td>
+                </tr>
+                <tr>
+                    <td><code>midTsH</code></td>
+                    <td><code>string</code></td>
+                    <td>ISO-formatted midpoint time</td>
+                </tr>
+                <tr>
+                    <td><code>aggregatedIds</code></td>
+                    <td><code>Array&lt;string&gt;</code></td>
+                    <td>Array of detection ids — present only on hour bins (for deduplication and audit)</td>
+                </tr>
+                <tr>
+                    <td><code>aggregatedNumber</code></td>
+                    <td><code>number</code></td>
+                    <td>Count of aggregated items (detections for hours; lower bins for upper levels)</td>
+                </tr>
+                <tr>
+                    <td><code>sumOccupiedSpaces</code></td>
+                    <td><code>number</code></td>
+                    <td>Sum of occupiedSpaces values</td>
+                </tr>
+                <tr>
+                    <td><code>sumTotalSpaces</code></td>
+                    <td><code>number</code></td>
+                    <td>Sum of totalSpaces values</td>
+                </tr>
+                <tr>
+                    <td><code>minOccupiedSpaces</code></td>
+                    <td><code>number|null</code></td>
+                    <td>Minimum occupiedSpaces (null if empty)</td>
+                </tr>
+                <tr>
+                    <td><code>maxOccupiedSpaces</code></td>
+                    <td><code>number|null</code></td>
+                    <td>Maximum occupiedSpaces (null if empty)</td>
+                </tr>
+                <tr>
+                    <td><code>minTotalSpaces</code></td>
+                    <td><code>number|null</code></td>
+                    <td>Minimum totalSpaces (null if empty)</td>
+                </tr>
+                <tr>
+                    <td><code>maxTotalSpaces</code></td>
+                    <td><code>number|null</code></td>
+                    <td>Maximum totalSpaces (null if empty)</td>
+                </tr>
+                <tr>
+                    <td><code>meanOccupiedSpaces</code></td>
+                    <td><code>number|null</code></td>
+                    <td>Mean occupiedSpaces (null if no data)</td>
+                </tr>
+                <tr>
+                    <td><code>meanTotalSpaces</code></td>
+                    <td><code>number|null</code></td>
+                    <td>Mean totalSpaces (null if no data)</td>
+                </tr>
+                <tr>
+                    <td><code>occupationRate</code></td>
+                    <td><code>number|null</code></td>
+                    <td>meanOccupiedSpaces / meanTotalSpaces (null if not computable)</td>
+                </tr>
+                <tr>
+                    <td><code>createdAt</code></td>
+                    <td><code>number</code></td>
+                    <td>Creation timestamp (ms)</td>
+                </tr>
+                <tr>
+                    <td><code>updatedAt</code></td>
+                    <td><code>number</code></td>
+                    <td>Last updated timestamp (ms)</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Behavioral details & edge cases</h2>
+        <h3>Timezones</h3>
+        <p>All bin boundaries are computed with Luxon using the <code>timezone</code> attached to detections or bins.
+            This ensures a camera that is permanently located in a timezone has consistent local-day/month/week
+            boundaries.</p>
+
+        <h3>Late / out-of-order detections</h3>
+        <p>
+            The design supports incremental re-processing:
+        <ol>
+            <li>Pass previously computed bins in <code>existingBins</code>. The aggregator will attempt to merge new
+                detections into existing hour bins and will roll updated hour bins upward into higher-level bins.</li>
+            <li>A detection is ignored for a given hour bin if its <code>id</code> already appears in
+                <code>aggregatedIds</code> to avoid double counting.</li>
+        </ol>
+        </p>
+
+        <h3>Empty bins</h3>
+        <p>Min/max fields are initialized to <code>null</code> for empty bins; aggregates skip empty child bins when
+            rolling up so that min/max comparisons remain meaningful.</p>
+
+        <h3>Performance & scaling</h3>
+        <ul>
+            <li>Hour bins keep detection IDs for auditing — avoid pushing detection IDs into day/month/year/year bins to
+                prevent memory explosion.</li>
+            <li>For large volumes, process detections in batches and persist intermediate hour bins to storage
+                (DynamoDB, etc.) and provide them back as <code>existingBins</code> on subsequent runs.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Example: merging new detections into existing bins</h2>
+        <pre><code>// assume `hourBins` contains previously computed hour bins
+const newDetections = [ /* one or many detection objects */ ];
+
+// Merge newDetections into existing bins:
+const aggregator = new DetectionAggregator();
+const merged = aggregator.aggregate(newDetections, { hourBins });
+// merged.hourBins will contain updated hour bins (new detections merged in)
+// higher-level bins (day/month/year) are rolled up from the updated hour bins
+</code></pre>
+    </section>
+
+    <section>
+        <h2>Troubleshooting / frequently-seen issues</h2>
+        <ul>
+            <li><strong>Missing ts on bins:</strong> Make sure existing bins include <code>startTs</code> and
+                <code>timezone</code>. The rollup logic uses <code>startTs</code> to compute parent boundaries.</li>
+            <li><strong>Duplicates:</strong> If a detection is double-counted, verify that the <code>id</code> is stable
+                and present in the previously stored <code>aggregatedIds</code> for the relevant hour bin.</li>
+            <li><strong>Month/day mismatches:</strong> Ensure camera timezone is constant; when using random timezones
+                per detection you may get unexpected month/day crossing behavior.</li>
+            <li><strong>Large year bins:</strong> Year bins do not store detection IDs. If you see huge arrays, check
+                that <code>aggregatedIds</code> is only present on hour bins.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>License & ownership</h2>
+        <p class="muted">This code belongs to Orangead Media Inc. and is not to be shared or used without permission.
+        </p>
+    </section>
+
+    <footer>
+        <p class="muted">Generated documentation • DetectionAggregator • © 2025 Orangead Media Inc. • Author: Edouard
+            Boily</p>
+    </footer>
+</body>
+
+</html>
